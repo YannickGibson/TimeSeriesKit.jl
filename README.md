@@ -26,19 +26,26 @@
 
 For development Julia 1.11.7 was used.
 
+**Clone repository**
 ```bash
-# 1. Clone the project
 git clone https://github.com/username/ProjectName.git TimeSeriesKit
-
-# 2. Open Julia
+```
+**Open Julia**
+```bash
 julia
+```
 
-# 3. Add the project to any environment
+**Add the package to an environment**
+```bash
 ]
 add TimeSeriesKit
 ⌫
+```
 
-# 4. Use the project
+
+**Use the package**
+```julia
+
 using TimeSeriesKit
 ```
 
