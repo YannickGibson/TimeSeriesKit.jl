@@ -1,5 +1,7 @@
 module TimeSeriesKit
 
-# Write your package code here.
+    function operation_xy(x, y)
+        return x + y
+    end
 
 end
