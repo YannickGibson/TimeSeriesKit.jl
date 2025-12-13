@@ -30,12 +30,13 @@ For development Julia 1.11.7 was used.
 # 1. Clone the project
 git clone https://github.com/username/ProjectName.git TimeSeriesKit
 
-# 2. Open Julia 1.11
+# 2. Open Julia
 julia
 
-# 3. In Julia, add the project locally
-using Pkg
-Pkg.develop(path="TimeSeriesKit")
+# 3. Add the project to any environment
+]
+add TimeSeriesKit
+⌫
 
 # 4. Use the project
 using TimeSeriesKit
