@@ -2,6 +2,6 @@
 
 julia_version = "1.11.7"
 manifest_format = "2.0"
-project_hash = "dc77c3adf06e5d5e0eede695c6c32fc63ca14779"
+project_hash = "0300aa6a5b3bc109c5f367740f5df686beb5a3cf"
 
 [deps]
