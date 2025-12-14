@@ -16,7 +16,7 @@ struct TimeSeries{T<:Real}
     # Constructor with only y values - automatically creates x values from 1 to n
     function TimeSeries(values::Vector{T}) where T<:Real
         timestamps = collect(1:length(values))
-        new{T}(values, timestamps)
+        new{T}(timestamps, values)
     end
     
     # Constructor with x values first, then y values
