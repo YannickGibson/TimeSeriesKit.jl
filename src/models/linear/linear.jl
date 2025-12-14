@@ -16,14 +16,14 @@ mutable struct LinearModel <: AbstractTimeSeriesModel
 end
 
 """
-    create_matrix_X(n::Int)
+    create_matrix_X(x_values::Vector{<:Real})
 
 Create design matrix for linear trend fitting.
 """
-function create_matrix_X(n::Int)
-    X = zeros(n, 2)
+function create_matrix_X(x_values::Vector{<:Real})
+    X = zeros(length(x_values), 2)
     X[:, 1] .= 1.0  # Intercept
-    X[:, 2] = 1:n    # Time trend
+    X[:, 2] = x_values  # Time trend
     return X
 end
 

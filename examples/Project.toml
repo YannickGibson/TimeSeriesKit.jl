@@ -1,8 +1,9 @@
 name = "TimeSeriesKitExamples"
 authors = ["Yannick Gibson <yannick.gibson@seznam.cz> and contributors"]
 
+[deps]
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+TimeSeriesKit = "e44ab2e3-975d-47c9-b14d-90d85588e1d2"
+
 [compat]
 julia = "1.11"
-
-[deps]
-TimeSeriesKit = "e44ab2e3-975d-47c9-b14d-90d85588e1d2"

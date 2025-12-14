@@ -1,0 +1,46 @@
+# Folder structure simple:
+- core/
+    - types.jl
+    - utils.jl
+- models/
+    - abstract.jl
+    - autoregressive/
+        - ar.jl
+    - linear/
+        - linear.jl
+    - ets/
+        - ses.jl
+- training/
+    - fit.jl  # fit(model, ts)
+    - predict.jl  # predict(model, ts, horizon)
+- evaluation/
+    - metrics.jl  # mse, mae, rmse
+    - backtest.jl  # rolling forecast
+
+
+Eventual structure
+
+# Folder Structure within src/
+- core/
+    - types.jl
+    - utils.jl
+- models/
+    - abstract.jl
+    - autoregressive/
+        - ar.jl
+        - ma.jl
+        - arma.jl
+        - arima.jl
+        - sarima.jl
+    - linear/
+        - linear.jl
+    - ets/
+        - ses.jl
+        - des.jl
+        - tes.jl
+- training/
+    - fit.jl  # fit(model, ts)
+    - predict.jl  # predict(model, ts, horizon)
+- evaluation/
+    - metrics.jl  # mse, mae, rmse
+    - backtest.jl  # rolling forecast

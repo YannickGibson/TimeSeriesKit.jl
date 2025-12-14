@@ -1,7 +1,89 @@
 module TimeSeriesKit
 
-    function operation_xy(x, y)
-        return x + y
+# Core functionality
+include("core/types.jl")
+include("core/utils.jl")
+
+# Export core types
+export TimeSeries, AbstractTimeSeriesModel, ModelState
+
+# Export core utilities
+export validate_timeseries, split_train_test, difference, normalize
+
+# Models submodule structure
+module Models
+    using ..TimeSeriesKit
+    
+    # Abstract models
+    include("models/abstract.jl")
+    export is_fitted, get_parameters, get_residuals
+    
+    # Autoregressive models
+    module Autoregressive
+        using ..TimeSeriesKit
+        include("models/autoregressive/ar.jl")
     end
+    using .Autoregressive
+    export ARModel
+    
+    # Linear models
+    module Linear
+        using ..TimeSeriesKit
+        include("models/linear/linear.jl")
+    end
+    using .Linear
+    export LinearModel
+    
+    # ETS models
+    module ETS
+        using ..TimeSeriesKit
+        include("models/ets/ses.jl")
+    end
+    using .ETS
+    export SESModel
+end
+
+# Export model types at package level
+using .Models
+export ARModel, LinearModel, SESModel
+export is_fitted, get_parameters, get_residuals
+
+# Training module
+module Training
+    using ..TimeSeriesKit
+    using ..Models
+    using LinearAlgebra
+    using Statistics
+    
+    include("training/utils.jl")
+    include("training/fit.jl")
+    include("training/predict.jl")
+    include("training/forecast.jl")
+    include("training/iterative.jl")
+end
+using .Training
+export fit, predict, forecast
+export extrapolate_timestamps, iterative_predict
+
+# Evaluation module
+module Evaluation
+    using ..TimeSeriesKit
+    using ..Models
+    using ..Training
+    using Statistics
+    
+    include("evaluation/metrics.jl")
+    include("evaluation/backtest.jl")
+end
+using .Evaluation
+export mse, mae, rmse
+export rolling_forecast, RollingForecastResult, print_backtest_summary
+
+# Extensions
+function plot_timeseries end
+function plot_residuals end
+function plot_ac end
+
+export plot_timeseries, plot_residuals, plot_ac
 
 end
