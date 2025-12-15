@@ -73,7 +73,10 @@ function cross_validate(model::AbstractTimeSeriesModel, ts::TimeSeries, n_splits
         
         try
             # Create a fresh model instance for each fold
-            model_copy = typeof(model)()
+            # Use deepcopy to preserve model parameters
+            model_copy = deepcopy(model)
+            # Reset the state but keep parameters
+            model_copy.state = ModelState()
             
             # Fit the model
             fit(model_copy, train_ts)

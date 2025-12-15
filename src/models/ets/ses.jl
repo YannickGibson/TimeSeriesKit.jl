@@ -14,7 +14,7 @@ mutable struct SESModel <: AbstractTimeSeriesModel
     alpha::Union{Float64, Nothing}  # Smoothing parameter (if Nothing, will be optimized)
     state::ModelState
     
-    function SESModel(alpha::Union{Float64, Nothing}=nothing)
+    function SESModel(; alpha::Union{Float64, Nothing}=nothing)
         if alpha !== nothing && (alpha <= 0.0 || alpha >= 1.0)
             throw(ArgumentError("Alpha must be between 0 and 1"))
         end
@@ -46,29 +46,6 @@ function ses_forecast(values::Vector{<:Real}, alpha::Float64, horizon::Int)
     forecasts = fill(final_level, horizon)
     
     return fitted, forecasts, final_level
-end
-
-"""
-    optimize_alpha(values::Vector{<:Real})
-
-Find optimal alpha parameter by minimizing MSE.
-"""
-function optimize_alpha(values::Vector{<:Real})
-    best_alpha = 0.5
-    best_mse = Inf
-    
-    for alpha in 0.01:0.01:0.99
-        fitted, _, _ = ses_forecast(values, alpha, 1)
-        residuals = values .- fitted
-        mse = mean(residuals[2:end].^2)  # Skip first point
-        
-        if mse < best_mse
-            best_mse = mse
-            best_alpha = alpha
-        end
-    end
-    
-    return best_alpha
 end
 
 # Export the model type
