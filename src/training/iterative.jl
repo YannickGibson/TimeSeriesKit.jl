@@ -1,6 +1,6 @@
 # Iterative prediction functions
 
-using ..TimeSeriesKit: TimeSeries, LinearModel, SESModel
+using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, min_train_size
 using ..Training: predict, fit
 
 """
@@ -27,30 +27,31 @@ at each step with one additional data point.
 # Returns
 - `TimeSeries`: A TimeSeries containing the iterative predictions with extrapolated timestamps
 """
-function iterative_predict(model::Union{LinearModel, SESModel}, ts::TimeSeries, horizon::Int)
+function iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horizon::Int)
     n = length(ts)
     
-    if n < 2
-        throw(ArgumentError("Time series must have at least 2 points"))
+    min_size = min_train_size(model)
+    if n < min_size
+        throw(ArgumentError("Time series must have at least $(min_size) points for this model"))
     end
     
     if horizon < 1
         throw(ArgumentError("Horizon must be at least 1"))
     end
     
-    # Total predictions: from point 3 to end of ts, plus horizon into future
-    total_predictions = (n - 2) + horizon
+    # Total predictions: from point (min_size+1) to end of ts, plus horizon into future
+    total_predictions = (n - min_size) + horizon
     predictions = zeros(total_predictions)
     
     # Generate all x values we'll predict
     step = ts.timestamps[end] - ts.timestamps[end-1]
     future_x = [ts.timestamps[end] + step * h for h in 1:horizon]
-    all_pred_x = [ts.timestamps[3:end]; future_x]
+    all_pred_x = [ts.timestamps[min_size+1:end]; future_x]
     
     pred_idx = 1
     
-    # Phase 1: Predict within historical data (point 3 to n)
-    for i in 3:n
+    # Phase 1: Predict within historical data (point min_size+1 to n)
+    for i in (min_size+1):n
         # Train on points 1 to i-1
         train_x = ts.timestamps[1:i-1]
         train_y = ts.values[1:i-1]

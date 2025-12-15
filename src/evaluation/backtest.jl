@@ -1,6 +1,6 @@
 # Backtesting utilities for time series models
 
-using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries
+using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, min_train_size
 using ..TimeSeriesKit: fit, iterative_predict
 using Statistics
 using DataFrames
@@ -39,20 +39,23 @@ function cross_validate(model::AbstractTimeSeriesModel, ts::TimeSeries, n_splits
         throw(ArgumentError("n_splits must be at least 2"))
     end
     
-    if n < n_splits + 1
-        throw(ArgumentError("Time series too short for $(n_splits) splits"))
+    # Get model-specific minimum training size
+    model_min_size = min_train_size(model)
+    
+    if n < model_min_size + n_splits
+        throw(ArgumentError("Time series too short for $(n_splits) splits with this model (needs at least $(model_min_size + n_splits) points)"))
     end
     
     rmse_scores = Float64[]
     mae_scores = Float64[]
     
-    # Calculate split sizes - start with minimum training size
-    min_train_size = div(n, n_splits + 1)
+    # Calculate split sizes - start with model's minimum training size
+    initial_train_size = max(div(n, n_splits + 1), model_min_size)
     
     for i in 1:n_splits
         # Growing training window approach
-        train_end = min_train_size + i * div(n - min_train_size, n_splits)
-        test_end = min(train_end + div(n - min_train_size, n_splits), n)
+        train_end = initial_train_size + i * div(n - initial_train_size, n_splits)
+        test_end = min(train_end + div(n - initial_train_size, n_splits), n)
         
         if train_end >= test_end
             continue
@@ -193,8 +196,13 @@ function grid_search(model_configs::Dict, ts::TimeSeries, n_splits::Int=5; verbo
                 model = ModelType(; params...)
                 
                 # Cross-validate
-                cv_result = cross_validate(model, ts, n_splits, verbose=false)
+                cv_result = cross_validate(model, ts, n_splits, verbose=verbose)
                 score = cv_result.mean_rmse
+                
+                # Fit model on full data to get final parameters
+                final_model = typeof(model)(; params...)
+                fit(final_model, ts)
+                fitted_params = copy(final_model.state.parameters)
                 
                 push!(results, (
                     model_name = string(ModelType),
@@ -202,12 +210,13 @@ function grid_search(model_configs::Dict, ts::TimeSeries, n_splits::Int=5; verbo
                     mean_rmse = cv_result.mean_rmse,
                     std_rmse = cv_result.std_rmse,
                     mean_mae = cv_result.mean_mae,
-                    std_mae = cv_result.std_mae
+                    std_mae = cv_result.std_mae,
+                    fitted_params = fitted_params
                 ))
                 
                 if score < best_score
                     best_score = score
-                    best_model = model
+                    best_model = final_model
                     best_params = copy(params)
                 end
                 
@@ -230,9 +239,30 @@ function grid_search(model_configs::Dict, ts::TimeSeries, n_splits::Int=5; verbo
     # Helper function to format parameters nicely
     function format_params(params::Dict)
         if isempty(params)
-            return "default"
+            return "nothing"
         end
         return join(["$k=$v" for (k, v) in sort(collect(params), by=x->string(x[1]))], ", ")
+    end
+    
+    # Helper function to format fitted parameters
+    function format_fitted_params(params::Dict)
+        if isempty(params)
+            return "none"
+        end
+        
+        formatted = String[]
+        for (k, v) in sort(collect(params), by=x->string(x[1]))
+            if v isa Vector
+                # Format vectors with brackets
+                v_str = "[" * join([string(round(x, digits=4)) for x in v], ", ") * "]"
+                push!(formatted, "$k=$v_str")
+            elseif v isa Number
+                push!(formatted, "$k=$(round(v, digits=4))")
+            else
+                push!(formatted, "$k=$v")
+            end
+        end
+        return join(formatted, ", ")
     end
     
     # Create DataFrame from results
@@ -243,6 +273,7 @@ function grid_search(model_configs::Dict, ts::TimeSeries, n_splits::Int=5; verbo
         mean_mae = [r.mean_mae for r in results],
         std_mae = [r.std_mae for r in results],
         params = [format_params(r.params) for r in results],
+        fitted_params = [format_fitted_params(r.fitted_params) for r in results],
     )
     
     # Sort by RMSE (best first)

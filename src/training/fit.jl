@@ -54,7 +54,7 @@ function fit(model::LinearModel, ts::TimeSeries)
     y = ts.values
     
     # Ordinary least squares
-    w_ols = (X' * X) \ (X' * y)
+    w_ols = (X' * X) \ (X' * y)  # Inverse of left side, then multiplying
     
     # Store parameters
     model.state.parameters[:intercept] = w_ols[1]
@@ -62,6 +62,42 @@ function fit(model::LinearModel, ts::TimeSeries)
     
     # Compute fitted values and residuals
     fitted = X * w_ols
+    residuals = y .- fitted
+    
+    model.state.fitted_values = fitted
+    model.state.residuals = residuals
+    model.state.is_fitted = true
+    
+    return model
+end
+
+"""
+    fit(model::RidgeModel, ts::TimeSeries)
+
+Fit a ridge regression model to time series data.
+"""
+function fit(model::RidgeModel, ts::TimeSeries)
+    validate_timeseries(ts)
+    
+    n = length(ts)
+    X = TimeSeriesKit.Models.Linear.create_matrix_X(ts.timestamps)
+    y = ts.values
+    
+    # Ridge regression: w = (X'X + λI)^(-1) X'y
+    p = size(X, 2)
+    I_ridge = Matrix{Float64}(I, p, p)
+    # Don't regularize the intercept term
+    I_ridge[1, 1] = 0.0
+    
+    w_ridge = (X' * X + model.λ * I_ridge) \ (X' * y)
+    
+    # Store parameters
+    model.state.parameters[:intercept] = w_ridge[1]
+    model.state.parameters[:slope] = w_ridge[2]
+    model.state.parameters[:λ] = model.λ
+    
+    # Compute fitted values and residuals
+    fitted = X * w_ridge
     residuals = y .- fitted
     
     model.state.fitted_values = fitted

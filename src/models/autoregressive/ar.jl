@@ -13,7 +13,7 @@ mutable struct ARModel <: AbstractTimeSeriesModel
     p::Int  # Order of the AR model
     state::ModelState
     
-    function ARModel(p::Int)
+    function ARModel(; p::Int)
         if p < 1
             throw(ArgumentError("AR order must be at least 1"))
         end
@@ -46,6 +46,10 @@ function create_ar_matrix(ts::TimeSeries, p::Int)
     
     return X, y
 end
+
+# Minimum training size implementation
+# AR(p) needs at least p+2 points: p lags + 1 for the target + 1 for estimation
+TimeSeriesKit.Models.min_train_size(model::ARModel) = model.p + 2
 
 # Export the model type
 export ARModel

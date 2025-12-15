@@ -16,7 +16,7 @@ module Models
     
     # Abstract models
     include("models/abstract.jl")
-    export is_fitted, get_parameters, get_residuals
+    export is_fitted, get_parameters, get_residuals, min_train_size
     
     # Autoregressive models
     module Autoregressive
@@ -32,7 +32,7 @@ module Models
         include("models/linear/linear.jl")
     end
     using .Linear
-    export LinearModel
+    export LinearModel, RidgeModel
     
     # ETS models
     module ETS
@@ -45,8 +45,8 @@ end
 
 # Export model types at package level
 using .Models
-export ARModel, LinearModel, SESModel
-export is_fitted, get_parameters, get_residuals
+export ARModel, LinearModel, RidgeModel, SESModel
+export is_fitted, get_parameters, get_residuals, min_train_size
 
 # Training module
 module Training

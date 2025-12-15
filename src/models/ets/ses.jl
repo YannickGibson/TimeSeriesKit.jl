@@ -48,5 +48,8 @@ function ses_forecast(values::Vector{<:Real}, alpha::Float64, horizon::Int)
     return fitted, forecasts, final_level
 end
 
+# Minimum training size implementation
+TimeSeriesKit.Models.min_train_size(model::SESModel) = 2
+
 # Export the model type
 export SESModel

@@ -34,3 +34,15 @@ function get_residuals(model::AbstractTimeSeriesModel)
     end
     return model.state.residuals
 end
+
+"""
+    min_train_size(model)
+
+Get the minimum number of data points required to train this model.
+Each model type must implement this method.
+"""
+function min_train_size(model::AbstractTimeSeriesModel)
+    error("min_train_size not implemented for $(typeof(model))")
+end
+
+export is_fitted, get_parameters, get_residuals, min_train_size
