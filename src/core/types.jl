@@ -1,30 +1,60 @@
 # Core type definitions for TimeSeriesKit
 
+using CSV
+using DataFrames
+
 """
     TimeSeries
 
 A time series data structure containing values and timestamps.
 
 # Constructors
-- `TimeSeries(values::Vector{T})`: Creates a TimeSeries with values only, timestamps are automatically 1:n
-- `TimeSeries(x_values::Vector, y_values::Vector{T})`: Creates a TimeSeries with x values (timestamps) and y values
+- `TimeSeries(values::Vector{T}; name::String="")`: Creates a TimeSeries with values only, timestamps are automatically 1:n
+- `TimeSeries(x_values::Vector, y_values::Vector{T}; name::String="")`: Creates a TimeSeries with x values (timestamps) and y values
+- `TimeSeries(csv_path::String, country::String; name::String="")`: Loads SDMX-CSV 1.0 format emissions data from a CSV file for the specified country
 """
 struct TimeSeries{T<:Real}
     timestamps::Vector{<:Any}
     values::Vector{T}
+    name::String
     
     # Constructor with only y values - automatically creates x values from 1 to n
-    function TimeSeries(values::Vector{T}) where T<:Real
+    function TimeSeries(values::Vector{T}; name::String="") where T<:Real
         timestamps = collect(1:length(values))
-        new{T}(timestamps, values)
+        new{T}(timestamps, values, name)
     end
     
     # Constructor with x values first, then y values
-    function TimeSeries(x_values::Vector, y_values::Vector{T}) where T<:Real
+    function TimeSeries(x_values::Vector, y_values::Vector{T}; name::String="") where T<:Real
         if length(x_values) != length(y_values)
             throw(ArgumentError("Length of x_values and y_values must match"))
         end
-        new{T}(x_values, y_values)
+        new{T}(x_values, y_values, name)
+    end
+    
+    # Constructor from CSV file path - loads SDMX-CSV 1.0 format emissions data
+    function TimeSeries(csv_path::String, country::String; name::String="")
+        # Load SDMX-CSV 1.0 format
+        df = CSV.read(csv_path, DataFrame)
+        
+        # Filter by country
+        country_data = df[df.geo .== country, :]
+        
+        if nrow(country_data) == 0
+            throw(ArgumentError("No data found for country: $country"))
+        end
+        
+        # Sort by year to ensure time series order
+        sort!(country_data, :TIME_PERIOD)
+        
+        # Extract years and emissions values
+        years = country_data.TIME_PERIOD
+        data = Float32.(country_data.OBS_VALUE)
+        
+        # Use provided name or default to country name
+        ts_name = isempty(name) ? country : name
+        
+        new{Float32}(years, data, ts_name)
     end
 end
 

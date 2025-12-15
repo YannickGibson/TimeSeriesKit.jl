@@ -77,7 +77,7 @@ module Evaluation
 end
 using .Evaluation
 export mse, mae, rmse
-export rolling_forecast, RollingForecastResult, print_backtest_summary
+export cross_validate, grid_search
 
 # Extensions
 function plot_timeseries end

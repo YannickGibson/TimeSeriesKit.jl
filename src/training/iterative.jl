@@ -1,8 +1,7 @@
 # Iterative prediction functions
 
 using ..TimeSeriesKit: TimeSeries, LinearModel, SESModel
-using ..Models: fit
-using ..Training: predict
+using ..Training: predict, fit
 
 """
     iterative_predict(model::Union{LinearModel, SESModel}, ts::TimeSeries, horizon::Int)
