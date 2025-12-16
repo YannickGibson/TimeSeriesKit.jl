@@ -9,6 +9,7 @@ export TimeSeries, AbstractTimeSeriesModel, ModelState
 
 # Export core utilities
 export validate_timeseries, split_train_test, difference, normalize
+export differentiate, integrate
 
 # Models submodule structure
 module Models
@@ -83,7 +84,8 @@ export cross_validate, grid_search
 function plot_timeseries end
 function plot_residuals end
 function plot_ac end
+function plot_acf_pacf end
 
-export plot_timeseries, plot_residuals, plot_ac
+export plot_timeseries, plot_residuals, plot_ac, plot_acf_pacf
 
 end

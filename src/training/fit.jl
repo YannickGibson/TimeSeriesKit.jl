@@ -8,7 +8,7 @@ using Statistics
 """
     fit(model::AbstractTimeSeriesModel, ts::TimeSeries)
 
-Fit a time series model to data.
+Fit a time series model to data. If the model was fitted previously, this function will refit it completely.
 """
 function fit end
 
@@ -23,9 +23,12 @@ function fit(model::ARModel, ts::TimeSeries)
     # Import the helper function
     X, y = TimeSeriesKit.Models.Autoregressive.create_ar_matrix(ts, model.p)
     
-    # Ordinary least squares: β = (X'X)^(-1)X'y
-    β = (X' * X) \ (X' * y)
-    
+    if rank(X' * X) == max(size(X)...)
+        # Ordinary least squares: β = (X'X)^(-1)X'y
+        β = (X' * X) \ (X' * y)
+    else
+        β = pinv(X' * X) * (X' * y)
+    end
     # Store parameters
     model.state.parameters[:intercept] = β[1]
     model.state.parameters[:coefficients] = β[2:end]
@@ -34,7 +37,7 @@ function fit(model::ARModel, ts::TimeSeries)
     fitted = X * β
     residuals = y .- fitted
     
-    model.state.fitted_values = fitted
+    model.state.fitted_values = y
     model.state.residuals = residuals
     model.state.is_fitted = true
     
@@ -49,7 +52,6 @@ Fit a linear trend model to time series data.
 function fit(model::LinearModel, ts::TimeSeries)
     validate_timeseries(ts)
     
-    n = length(ts)
     X = TimeSeriesKit.Models.Linear.create_matrix_X(ts.timestamps)
     y = ts.values
     
@@ -79,7 +81,6 @@ Fit a ridge regression model to time series data.
 function fit(model::RidgeModel, ts::TimeSeries)
     validate_timeseries(ts)
     
-    n = length(ts)
     X = TimeSeriesKit.Models.Linear.create_matrix_X(ts.timestamps)
     y = ts.values
     
@@ -116,12 +117,6 @@ function fit(model::SESModel, ts::TimeSeries)
     validate_timeseries(ts)
     
     values = ts.values
-    
-    # Optimize alpha if not provided
-    if model.alpha === nothing
-        alpha = TimeSeriesKit.Models.ETS.optimize_alpha(values)
-        model.alpha = alpha
-    end
     
     # Fit the model
     fitted, _, level = TimeSeriesKit.Models.ETS.ses_forecast(values, model.alpha, 1)

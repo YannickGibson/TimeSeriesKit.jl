@@ -48,8 +48,7 @@ function create_ar_matrix(ts::TimeSeries, p::Int)
 end
 
 # Minimum training size implementation
-# AR(p) needs at least p+2 points: p lags + 1 for the target + 1 for estimation
-TimeSeriesKit.Models.min_train_size(model::ARModel) = model.p + 2
+TimeSeriesKit.Models.min_train_size(model::ARModel) = model.p * 2  # Avoid X'X singularity
 
 # Export the model type
 export ARModel

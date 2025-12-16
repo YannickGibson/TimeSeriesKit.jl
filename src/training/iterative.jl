@@ -53,8 +53,13 @@ function iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horiz
     # Phase 1: Predict within historical data (point min_size+1 to n)
     for i in (min_size+1):n
         # Train on points 1 to i-1
-        train_x = ts.timestamps[1:i-1]
-        train_y = ts.values[1:i-1]
+        knowledge_start = 1
+        if hasproperty(model, :sliding_window)
+            knowledge_start = max(1, i - model.sliding_window)
+        end
+
+        train_x = ts.timestamps[knowledge_start:i-1]
+        train_y = ts.values[knowledge_start:i-1]
         train_ts = TimeSeries(train_x, train_y)
         
         # Fit model
@@ -80,8 +85,10 @@ function iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horiz
         predictions[pred_idx] = pred_ts.values[1]
         pred_idx += 1
     end
-    
-    return TimeSeries(all_pred_x, predictions)
+    # dynamically get the class name
+    cls_name = nameof(typeof(model))
+    new_name = "$(cls_name) (out-of-sample)"
+    return TimeSeries(all_pred_x, predictions; name = new_name)
 end
 
 export iterative_predict

@@ -63,6 +63,67 @@ Base.getindex(ts::TimeSeries, i) = ts.values[i]
 Base.lastindex(ts::TimeSeries) = lastindex(ts.values)
 
 """
+    differentiate(ts::TimeSeries; order::Int=1)
+
+Compute the discrete difference of a time series.
+
+# Arguments
+- `ts::TimeSeries`: The time series to differentiate
+- `order::Int=1`: The order of differentiation (how many times to apply the difference)
+
+# Returns
+- A new `TimeSeries` with differenced values: y_t = x_t - x_{t-1}
+
+# Example
+```julia
+ts = TimeSeries([1.0, 3.0, 6.0, 10.0])
+diff_ts = differentiate(ts)  # Returns [2.0, 3.0, 4.0]
+```
+"""
+function differentiate(ts::TimeSeries; order::Int=1)
+    if order < 1
+        throw(ArgumentError("Order must be at least 1"))
+    end
+    
+    values = ts.values
+    timestamps = ts.timestamps
+    
+    for _ in 1:order
+        if length(values) < 2
+            throw(ArgumentError("Time series too short to differentiate"))
+        end
+        values = diff(values)
+        timestamps = timestamps[2:end]
+    end
+    
+    new_name = ts.name == "" ? "Differenced" : "$(ts.name) (d=$order)"
+    return TimeSeries(timestamps, values; name=new_name)
+end
+
+"""
+    integrate(ts::TimeSeries)
+
+Compute the cumulative sum (integration) of a time series.
+
+# Arguments
+- `ts::TimeSeries`: The time series to integrate
+
+# Returns
+- A new `TimeSeries` with integrated values: y_t = sum(x_1 to x_t)
+
+# Example
+```julia
+ts = TimeSeries([1.0, 2.0, 3.0, 4.0])
+int_ts = integrate(ts)  # Returns [1.0, 3.0, 6.0, 10.0]
+```
+"""
+function integrate(ts::TimeSeries)
+    values = cumsum(ts.values)
+    new_name = ts.name == "" ? "Integrated" : "$(ts.name) (integrated)"
+    return TimeSeries(ts.timestamps, values; name=new_name)
+end
+
+"""
     AbstractTimeSeriesModel
 
 Abstract base type for all time series models.

@@ -14,7 +14,7 @@ mutable struct SESModel <: AbstractTimeSeriesModel
     alpha::Union{Float64, Nothing}  # Smoothing parameter (if Nothing, will be optimized)
     state::ModelState
     
-    function SESModel(; alpha::Union{Float64, Nothing}=nothing)
+    function SESModel(; alpha::Float64 = 0.8)
         if alpha !== nothing && (alpha <= 0.0 || alpha >= 1.0)
             throw(ArgumentError("Alpha must be between 0 and 1"))
         end

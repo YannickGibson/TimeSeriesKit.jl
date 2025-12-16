@@ -1,6 +1,6 @@
 # Model prediction functions (predict at specific x values)
 
-using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, ARModel, LinearModel, RidgeModel, SESModel
+using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, ARModel, MAModel, LinearModel, RidgeModel, SESModel
 using Statistics
 
 """
@@ -78,19 +78,44 @@ function predict(model::ARModel, x_values::Vector{<:Real})
     # and repeat it for all requested x_values
     fitted_values = model.state.fitted_values
     p = length(coefficients)
-    
     if length(fitted_values) < p
         throw(ErrorException("Not enough fitted values for AR($p) prediction"))
     end
     
     # Take the last p fitted values
-    last_values = fitted_values[end-p+1:end]
+    y_values = fitted_values[end-p+1:end]
     
     # Make one-step forecast: y_t = c + φ₁y_{t-1} + φ₂y_{t-2} + ... + φₚy_{t-p}
-    forecast = intercept + sum(coefficients .* reverse(last_values))
+    forecast = intercept + sum(coefficients .* y_values)
     
     # Repeat this forecast for all x_values
     predictions = fill(forecast, length(x_values))
+    
+    # Return as TimeSeries with x_values as timestamps
+    return TimeSeries(x_values, predictions)
+end
+
+# MA Model implementation
+"""
+    predict(model::MAModel, x_values::Vector{<:Real})
+
+Generate predictions at specific x values using a fitted MA model.
+Note: For MA models, predictions converge to the mean quickly.
+For multi-step ahead forecasts, use forecast instead.
+
+Returns a TimeSeries with the predictions and x values as timestamps.
+"""
+function predict(model::MAModel, x_values::Vector{<:Real})
+    if !model.state.is_fitted
+        throw(ErrorException("Model must be fitted before prediction"))
+    end
+    
+    # Get model parameters
+    μ = model.state.parameters[:mean]
+    
+    # For simple predict, MA model predictions are just the mean
+    # since we don't have recent errors for new x_values
+    predictions = fill(μ, length(x_values))
     
     # Return as TimeSeries with x_values as timestamps
     return TimeSeries(x_values, predictions)
