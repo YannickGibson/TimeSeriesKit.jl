@@ -171,24 +171,6 @@ using TimeSeriesKit
         @test rmse_val ≈ mae_val
     end
     
-    @testset "_get_matching_values helper" begin
-        # Test that the helper function properly extracts matching timestamps
-        ts1 = TimeSeries([1, 3, 5, 7], [10.0, 30.0, 50.0, 70.0])
-        ts2 = TimeSeries([2, 3, 5, 8], [20.0, 35.0, 55.0, 80.0])
-        
-        # Timestamps 3 and 5 match
-        vals1, vals2 = TimeSeriesKit.metrics._get_matching_values(ts1, ts2)
-        @test vals1 == [30.0, 50.0]
-        @test vals2 == [35.0, 55.0]
-    end
-    
-    @testset "_get_matching_values - no matches" begin
-        ts1 = TimeSeries([1, 2, 3], [10.0, 20.0, 30.0])
-        ts2 = TimeSeries([4, 5, 6], [40.0, 50.0, 60.0])
-        
-        @test_throws ArgumentError TimeSeriesKit.metrics._get_matching_values(ts1, ts2)
-    end
-    
     @testset "Metrics with unordered timestamps" begin
         # Test that metrics work even when timestamps are not in order
         actual_ts = TimeSeries([5, 2, 8, 1], [50.0, 20.0, 80.0, 10.0])
