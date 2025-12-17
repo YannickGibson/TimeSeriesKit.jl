@@ -10,7 +10,7 @@ export TimeSeries, AbstractTimeSeriesModel, ModelState
 export RandomWalk, WhiteNoise, ARProcess, MAProcess, ARMAProcess
 
 # Export core utilities
-export validate_timeseries, split_train_test, normalize
+export validate_timeseries
 export differentiate, integrate
 
 # Models submodule structure

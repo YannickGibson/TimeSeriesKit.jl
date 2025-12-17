@@ -8,5 +8,7 @@ using Aqua
     end
     
     include("test_core_types.jl")
+    include("test_core_utils.jl")
+    include("test_core_processes.jl")
 end
 
