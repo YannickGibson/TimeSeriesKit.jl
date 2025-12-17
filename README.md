@@ -7,13 +7,12 @@
 
 # Overview
 ## Features
-- ETS (Error, Trend, Seasonality) models such as Single Exponential Smoothing (SES) and Double Exponential Smoothing (DES)
+- Rolling Ridge Regression
 - AR/MA, ARMA
-- Cross-validation techniques for time series
+- Single Exponential Smoothing
+- Cross-validation techniques for time series and parameter space search
 - Dataset loading
-- Uncertainty estimation
 - Visualization tools
-- Kalman filter implementation
 
 
 
@@ -83,6 +82,15 @@ out_of_sample = iterative_predict(model_linear, ts, 4)
 plot_timeseries(ts, out_of_sample)
 ```
 ![alt text](assets/iterative_lr_window_3.png)
+## Linear Stochastic Processes
 
+```julia
+# AR(2) process: φ1 = 0.9, φ2 = -0.2, constant = 1.0 → X_t = -1.0 + 0.9*X_{t-1} - 0.2*X_{t-2} + ε_t
+# Characteristic polynomial: 1 - 0.9*z + 0.2*z^2
+# Roots: z1 = 2.5, z2 = 2.0 (both > 1)
+# ⇒ process is stationary
 
+ts = ARProcess(500, phi=[0.9, -0.2], constant=1.0)
+plot_acf_pacf(ts)
+```
 ![alt text](assets/stationary_ar_2_acf_pacf.png)

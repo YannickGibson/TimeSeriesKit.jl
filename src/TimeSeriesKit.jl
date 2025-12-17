@@ -2,11 +2,12 @@ module TimeSeriesKit
 
 # Core functionality
 include("core/types.jl")
+include("core/processes.jl")
 include("core/utils.jl")
 
 # Export core types
 export TimeSeries, AbstractTimeSeriesModel, ModelState
-export RandomWalk, WhiteNoise, ARProcess, MAProcess
+export RandomWalk, WhiteNoise, ARProcess, MAProcess, ARMAProcess
 
 # Export core utilities
 export validate_timeseries, split_train_test, difference, normalize

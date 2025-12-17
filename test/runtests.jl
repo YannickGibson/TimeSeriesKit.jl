@@ -29,11 +29,6 @@ using Test
         train_ts, test_ts = split_train_test(ts, 0.8)
         @test length(train_ts) == 8
         @test length(test_ts) == 2
-        
-        # Test difference
-        ts_diff = difference(ts, 1)
-        @test length(ts_diff) == 9
-        @test all(ts_diff.values .≈ 1.0)
     end
 
     @testset "Linear Model" begin

@@ -158,28 +158,39 @@ function TimeSeriesKit.plot_residuals(model::TimeSeriesKit.AbstractTimeSeriesMod
 end
 
 """
-    plot_acf_pacf(ts::TimeSeries; lags::Int=20)
+    plot_acf_pacf(ts::TimeSeries; lags::Int=20, show_timeseries::Bool=true)
 
-Plot time series with ACF and PACF in a custom layout: time series on top, ACF and PACF side by side below.
+Plot time series with ACF and PACF.
+
+# Arguments
+- `ts::TimeSeries`: The time series to analyze
+- `lags::Int=20`: Number of lags to display
+- `show_timeseries::Bool=true`: If true, shows time series plot above ACF/PACF. If false, shows only ACF and PACF side by side.
 """
 
-function TimeSeriesKit.plot_acf_pacf(ts::TimeSeriesKit.TimeSeries; lags::Int=20)
+function TimeSeriesKit.plot_acf_pacf(ts::TimeSeriesKit.TimeSeries; lags::Int=20, show_timeseries::Bool=true)
     acf_values = autocor(ts.values, 0:lags)
-    println("Pacf input vals: $(ts.values) and lags: $(0:lags)")
     pacf_values = pacf(ts.values, 0:lags)
     
-    # Create plots with adjusted margins
+    # Create ACF and PACF plots with adjusted margins
     bar1 = bar(0:lags, acf_values, title="ACF", xlabel="Lag", ylabel="Autocorrelation", 
                ylim=(-1.2, 1.2), left_margin=5Plots.mm, right_margin=2Plots.mm, bottom_margin=5Plots.mm)
     bar2 = bar(0:lags, pacf_values, title="PACF", xlabel="Lag", ylabel="Partial Autocorrelation", 
                ylim=(-1.2, 1.2), left_margin=2Plots.mm, right_margin=5Plots.mm, bottom_margin=5Plots.mm)
-    ts_plot = plot(ts.timestamps, ts.values, title=ts.name == "" ? "Time Series" : ts.name, 
-                   xlabel="Time", ylabel="Value", 
-                   legend=false, left_margin=5Plots.mm, right_margin=5Plots.mm, bottom_margin=5Plots.mm)
     
-    # Create layout
-    layout = @layout [a{0.3h}; [b c]]
-    return plot(ts_plot, bar1, bar2, layout=layout, size=(1000, 400))
+    if show_timeseries
+        # Create time series plot
+        ts_plot = plot(ts.timestamps, ts.values, title=ts.name == "" ? "Time Series" : ts.name, 
+                       xlabel="Time", ylabel="Value", 
+                       legend=false, left_margin=5Plots.mm, right_margin=5Plots.mm, bottom_margin=5Plots.mm)
+        
+        # Create layout with time series on top
+        layout = @layout [a{0.3h}; [b c]]
+        return plot(ts_plot, bar1, bar2, layout=layout, size=(1000, 400))
+    else
+        # Show only ACF and PACF side by side
+        return plot(bar1, bar2, layout=(1, 2), size=(1000, 300))
+    end
 end
 
 # Shorthand alias
