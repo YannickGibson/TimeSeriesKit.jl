@@ -10,7 +10,7 @@ export TimeSeries, AbstractTimeSeriesModel, ModelState
 export RandomWalk, WhiteNoise, ARProcess, MAProcess, ARMAProcess
 
 # Export core utilities
-export validate_timeseries, split_train_test, difference, normalize
+export validate_timeseries, split_train_test, normalize
 export differentiate, integrate
 
 # Models submodule structure
@@ -24,7 +24,7 @@ module Models
     # Autoregressive models
     module Autoregressive
         using ..TimeSeriesKit
-        include("models/autoregressive/ar.jl")
+        include("models/ar.jl")
     end
     using .Autoregressive
     export ARModel
@@ -32,7 +32,7 @@ module Models
     # ARIMA models
     module ARIMA
         using ..TimeSeriesKit
-        include("models/arima/arima.jl")
+        include("models/arima.jl")
     end
     using .ARIMA
     export ARIMAModel
@@ -41,6 +41,7 @@ module Models
     module Linear
         using ..TimeSeriesKit
         include("models/linear/linear.jl")
+        include("models/linear/ridge.jl")
     end
     using .Linear
     export LinearModel, RidgeModel
@@ -84,11 +85,9 @@ module Evaluation
     using Statistics
     
     include("evaluation/metrics.jl")
-    include("evaluation/backtest.jl")
 end
 using .Evaluation
 export mse, mae, rmse
-export cross_validate, grid_search
 
 # Extensions
 function plot_timeseries end
@@ -98,6 +97,6 @@ function plot_acf_pacf end
 # Shorthand aliases
 const plot_ts = plot_timeseries
 
-export plot_timeseries, plot_ts, plot_residuals, plot_ac, plot_acf_pacf
+export plot_timeseries, plot_ts, plot_residuals, plot_acf_pacf
 
 end

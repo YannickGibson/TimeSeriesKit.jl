@@ -78,7 +78,7 @@ Base.getindex(ts::TimeSeries, i::Int) = ts.values[i]
 function Base.getindex(ts::TimeSeries{T}, indices) where T
     new_timestamps = ts.timestamps[indices]
     new_values = ts.values[indices]
-    new_name = ts.name == "" ? "" : "$(ts.name) [subset]"
+    new_name = ts.name == "" ? "[Subset]" : "$(ts.name) [Subset]"
     return TimeSeries(new_timestamps, new_values; name=new_name)
 end
 

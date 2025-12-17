@@ -15,7 +15,6 @@
 - Visualization tools
 
 
-
 ### Julia and implementation features
 - Multiple dispatch
 - Broadcasting
