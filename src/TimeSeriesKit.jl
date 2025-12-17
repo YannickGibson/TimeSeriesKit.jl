@@ -71,11 +71,10 @@ module Training
     include("training/utils.jl")
     include("training/fit.jl")
     include("training/predict.jl")
-    include("training/forecast.jl")
     include("training/iterative.jl")
 end
 using .Training
-export fit, predict, forecast
+export fit, predict
 export iterative_predict
 
 # Evaluation module
