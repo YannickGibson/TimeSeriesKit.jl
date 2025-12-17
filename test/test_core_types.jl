@@ -130,4 +130,26 @@ using Test
         @test AbstractTimeSeriesModel isa Type
         @test isabstracttype(AbstractTimeSeriesModel)
     end
+    
+    @testset "TimeSeries - CSV Loading" begin
+        csv_path = joinpath(@__DIR__, "..", "examples", "data", "emissions.csv")
+        
+        # Test loading from CSV with country filter
+        ts = TimeSeries(csv_path, "Czechia")
+        @test ts isa TimeSeries
+        @test eltype(ts.values) == Float32
+        @test length(ts) > 0
+        @test ts.name == "Czechia"
+        @test ts.timestamps isa Vector
+        
+        # Test with custom name
+        ts_named = TimeSeries(csv_path, "Czechia"; name="Czech Emissions")
+        @test ts_named.name == "Czech Emissions"
+        
+        # Test data is sorted by time
+        @test issorted(ts.timestamps)
+        
+        # Test error for non-existent country
+        @test_throws ArgumentError TimeSeries(csv_path, "NOTEXIST")
+    end
 end
