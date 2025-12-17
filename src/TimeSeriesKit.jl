@@ -6,7 +6,7 @@ include("core/utils.jl")
 
 # Export core types
 export TimeSeries, AbstractTimeSeriesModel, ModelState
-export RandomWalk, WhiteNoise, ARProcess
+export RandomWalk, WhiteNoise, ARProcess, MAProcess
 
 # Export core utilities
 export validate_timeseries, split_train_test, difference, normalize
@@ -92,9 +92,11 @@ export cross_validate, grid_search
 # Extensions
 function plot_timeseries end
 function plot_residuals end
-function plot_ac end
 function plot_acf_pacf end
 
-export plot_timeseries, plot_residuals, plot_ac, plot_acf_pacf
+# Shorthand aliases
+const plot_ts = plot_timeseries
+
+export plot_timeseries, plot_ts, plot_residuals, plot_ac, plot_acf_pacf
 
 end

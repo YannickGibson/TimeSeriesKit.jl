@@ -66,7 +66,7 @@ plot_timeseries(ts)
 ### Sliding window 2
 ```julia
 # Create linear model
-model_linear = LinearModel(sliding_window=3)
+model_linear = LinearModel(sliding_window=2)
 
 # Predict series with forecast of 4
 out_of_sample = iterative_predict(model_linear, ts, 4)
@@ -76,10 +76,13 @@ plot_timeseries(ts, out_of_sample)
 ### Sliding window 3
 ```julia
 # Create linear model
-model_linear = LinearModel(sliding_window=2)
+model_linear = LinearModel(sliding_window=3)
 
 # Predict series with forecast of 4
 out_of_sample = iterative_predict(model_linear, ts, 4)
 plot_timeseries(ts, out_of_sample)
 ```
 ![alt text](assets/iterative_lr_window_3.png)
+
+
+![alt text](assets/stationary_ar_2_acf_pacf.png)

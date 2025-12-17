@@ -104,28 +104,38 @@ function WhiteNoise(length::Int; mean::Real=0.0, variance::Real=1.0, name::Strin
 end
 
 """
-    ARProcess(length::Int; phi::Real=0.5, constant::Real=0.0, noise_variance::Real=1.0, name::String="AR(1) Process")
+    ARProcess(length::Int; phi::Union{Real,Vector{<:Real}}=0.5, constant::Real=0.0, noise_variance::Real=1.0, name::String="")
 
-Generate an AR(1) autoregressive time series.
+Generate an AR(p) autoregressive time series.
 
-The AR(1) process is generated as: y_t = constant - phi * y_{t-1} + ε_t, where ε_t ~ N(0, noise_variance)
+For AR(1): y_t = constant + phi * y_{t-1} + ε_t
+For AR(p): y_t = constant + phi[1] * y_{t-1} + phi[2] * y_{t-2} + ... + phi[p] * y_{t-p} + ε_t
+
+where ε_t ~ N(0, noise_variance)
 
 # Arguments
 - `length::Int`: Number of time steps
-- `phi::Real=0.5`: AR(1) coefficient (typically -1 < phi < 1 for stationarity)
+- `phi::Union{Real,Vector{<:Real}}=0.5`: AR coefficient(s). Can be a single value for AR(1) or a vector for AR(p)
 - `constant::Real=0.0`: Constant term in the AR process
 - `noise_variance::Real=1.0`: Variance of the white noise innovations
-- `name::String="AR(1) Process"`: Name for the time series
+- `name::String=""`: Name for the time series (auto-generated if empty)
 
 # Returns
-- `TimeSeries`: A time series containing the AR(1) process
+- `TimeSeries`: A time series containing the AR(p) process
 
-# Example
+# Examples
 ```julia
-ar = ARProcess(5000, phi=0.85, constant=10.0, noise_variance=1.0)
+# AR(1) process
+ar1 = ARProcess(5000, phi=0.85, constant=10.0)
+
+# AR(2) process
+ar2 = ARProcess(5000, phi=[0.5, 0.3], constant=0.0)
+
+# AR(3) process
+ar3 = ARProcess(5000, phi=[0.6, -0.2, 0.1])
 ```
 """
-function ARProcess(length::Int; phi::Real=0.5, constant::Real=0.0, noise_variance::Real=1.0, name::String="AR(1) Process")
+function ARProcess(length::Int; phi::Union{Real,Vector{<:Real}}=0.5, constant::Real=0.0, noise_variance::Real=1.0, name::String="")
     if length < 1
         throw(ArgumentError("Length must be at least 1"))
     end
@@ -133,13 +143,96 @@ function ARProcess(length::Int; phi::Real=0.5, constant::Real=0.0, noise_varianc
         throw(ArgumentError("Noise variance must be positive"))
     end
     
-    # Generate AR(1) process
+    # Convert scalar phi to vector
+    phi_vec = phi isa Real ? [phi] : phi
+    p = Base.length(phi_vec)
+    
+    # Auto-generate name if not provided
+    if isempty(name)
+        name = "AR($p) Process"
+    end
+    
+    # Generate AR(p) process
     data = zeros(length)
     std_dev = sqrt(noise_variance)
-    data[1] = constant  # Initialize first value
     
-    for t in 2:length
-        data[t] = constant - phi * data[t-1] + randn() * std_dev
+    for t in 1:length
+        if t <= p
+            # Initialize first p values to constant plus noise
+            data[t] = constant + randn() * std_dev
+        else
+            data[t] = constant
+            for i in 1:p
+                data[t] += phi_vec[i] * data[t-i]
+            end
+            data[t] += randn() * std_dev
+        end
+    end
+
+    return TimeSeries(data; name=name)
+end
+
+"""
+    MAProcess(length::Int; theta::Union{Real,Vector{<:Real}}=0.5, mean::Real=0.0, noise_variance::Real=1.0, name::String="")
+
+Generate an MA(q) moving average time series.
+
+For MA(1): y_t = mean + ε_t + theta * ε_{t-1}
+For MA(q): y_t = mean + ε_t + theta[1] * ε_{t-1} + theta[2] * ε_{t-2} + ... + theta[q] * ε_{t-q}
+
+where ε_t ~ N(0, noise_variance)
+
+# Arguments
+- `length::Int`: Number of time steps
+- `theta::Union{Real,Vector{<:Real}}=0.5`: MA coefficient(s). Can be a single value for MA(1) or a vector for MA(q)
+- `mean::Real=0.0`: Mean of the process
+- `noise_variance::Real=1.0`: Variance of the white noise innovations
+- `name::String=""`: Name for the time series (auto-generated if empty)
+
+# Returns
+- `TimeSeries`: A time series containing the MA(q) process
+
+# Examples
+```julia
+# MA(1) process
+ma1 = MAProcess(5000, theta=0.8, mean=0.0)
+
+# MA(2) process
+ma2 = MAProcess(5000, theta=[0.9, -0.4], mean=0.0)
+
+# MA(3) process
+ma3 = MAProcess(5000, theta=[0.6, -0.3, 0.2])
+```
+"""
+function MAProcess(length::Int; theta::Union{Real,Vector{<:Real}}=0.5, mean::Real=0.0, noise_variance::Real=1.0, name::String="")
+    if length < 1
+        throw(ArgumentError("Length must be at least 1"))
+    end
+    if noise_variance <= 0
+        throw(ArgumentError("Noise variance must be positive"))
+    end
+    
+    # Convert scalar theta to vector
+    theta_vec = theta isa Real ? [theta] : theta
+    q = Base.length(theta_vec)
+    
+    # Auto-generate name if not provided
+    if isempty(name)
+        name = "MA($q) Process"
+    end
+    
+    # Generate white noise innovations
+    std_dev = sqrt(noise_variance)
+    errors = randn(length) .* std_dev
+    
+    # Generate MA(q) process
+    data = zeros(length)
+    
+    for t in 1:length
+        data[t] = mean + errors[t]
+        for i in 1:min(q, t-1)
+            data[t] += theta_vec[i] * errors[t-i]
+        end
     end
     
     return TimeSeries(data; name=name)

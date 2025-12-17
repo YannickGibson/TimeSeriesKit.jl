@@ -182,4 +182,7 @@ function TimeSeriesKit.plot_acf_pacf(ts::TimeSeriesKit.TimeSeries; lags::Int=20)
     return plot(ts_plot, bar1, bar2, layout=layout, size=(1000, 400))
 end
 
+# Shorthand alias
+const plot_ts = plot_timeseries
+
 end
