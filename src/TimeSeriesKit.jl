@@ -6,6 +6,7 @@ include("core/utils.jl")
 
 # Export core types
 export TimeSeries, AbstractTimeSeriesModel, ModelState
+export RandomWalk, WhiteNoise, ARProcess
 
 # Export core utilities
 export validate_timeseries, split_train_test, difference, normalize
@@ -27,6 +28,14 @@ module Models
     using .Autoregressive
     export ARModel
     
+    # ARIMA models
+    module ARIMA
+        using ..TimeSeriesKit
+        include("models/arima/arima.jl")
+    end
+    using .ARIMA
+    export ARIMAModel
+    
     # Linear models
     module Linear
         using ..TimeSeriesKit
@@ -46,7 +55,7 @@ end
 
 # Export model types at package level
 using .Models
-export ARModel, LinearModel, RidgeModel, SESModel
+export ARModel, ARIMAModel, LinearModel, RidgeModel, SESModel
 export is_fitted, get_parameters, get_residuals, min_train_size
 
 # Training module

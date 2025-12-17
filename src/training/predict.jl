@@ -1,6 +1,6 @@
 # Model prediction functions (predict at specific x values)
 
-using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, ARModel, MAModel, LinearModel, RidgeModel, SESModel
+using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, ARModel, ARIMAModel, LinearModel, RidgeModel, SESModel
 using Statistics
 
 """
@@ -95,29 +95,58 @@ function predict(model::ARModel, x_values::Vector{<:Real})
     return TimeSeries(x_values, predictions)
 end
 
-# MA Model implementation
+# ARIMA Model implementation
 """
-    predict(model::MAModel, x_values::Vector{<:Real})
+    predict(model::ARIMAModel, x_values::Vector{<:Real})
 
-Generate predictions at specific x values using a fitted MA model.
-Note: For MA models, predictions converge to the mean quickly.
-For multi-step ahead forecasts, use forecast instead.
+Generate predictions at specific x values using a fitted ARIMA model.
+Note: This generates simple one-step forecasts. For proper multi-step forecasts, use forecast.
 
 Returns a TimeSeries with the predictions and x values as timestamps.
 """
-function predict(model::MAModel, x_values::Vector{<:Real})
+function predict(model::ARIMAModel, x_values::Vector{<:Real})
     if !model.state.is_fitted
         throw(ErrorException("Model must be fitted before prediction"))
     end
     
-    # Get model parameters
-    μ = model.state.parameters[:mean]
+    # Get parameters
+    intercept = model.state.parameters[:intercept]
+    ar_coeffs = model.state.parameters[:ar_coefficients]
+    ma_coeffs = model.state.parameters[:ma_coefficients]
+    d = model.state.parameters[:d]
     
-    # For simple predict, MA model predictions are just the mean
-    # since we don't have recent errors for new x_values
-    predictions = fill(μ, length(x_values))
+    # For simple predict, make one-step forecast on differenced scale
+    if model.p > 0
+        fitted_diff = model.state.fitted_values
+        p = model.p
+        
+        # Filter out NaN values
+        valid_fitted = fitted_diff[.!isnan.(fitted_diff)]
+        
+        if length(valid_fitted) < p
+            # Fall back to mean
+            forecast_diff = intercept
+        else
+            y_values = valid_fitted[end-p+1:end]
+            forecast_diff = intercept + sum(ar_coeffs .* y_values)
+        end
+    else
+        # MA model: predict mean
+        forecast_diff = intercept
+    end
     
-    # Return as TimeSeries with x_values as timestamps
+    # Integrate back if needed
+    if d > 0
+        original_values = model.state.parameters[:original_values]
+        last_values = original_values[end-d+1:end]
+        forecast_original = TimeSeriesKit.Models.ARIMA.integrate_forecast([forecast_diff], last_values, d)[1]
+    else
+        forecast_original = forecast_diff
+    end
+    
+    # Repeat for all x_values
+    predictions = fill(forecast_original, length(x_values))
+    
     return TimeSeries(x_values, predictions)
 end
 

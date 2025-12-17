@@ -165,6 +165,7 @@ Plot time series with ACF and PACF in a custom layout: time series on top, ACF a
 
 function TimeSeriesKit.plot_acf_pacf(ts::TimeSeriesKit.TimeSeries; lags::Int=20)
     acf_values = autocor(ts.values, 0:lags)
+    println("Pacf input vals: $(ts.values) and lags: $(0:lags)")
     pacf_values = pacf(ts.values, 0:lags)
     
     # Create plots with adjusted margins

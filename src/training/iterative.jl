@@ -4,7 +4,7 @@ using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, min_train_size
 using ..Training: predict, fit
 
 """
-    iterative_predict(model::Union{LinearModel, SESModel}, ts::TimeSeries, horizon::Int)
+    iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horizon::Int)
 
 Iteratively train and predict for a given horizon using expanding window.
 
@@ -20,7 +20,7 @@ This creates an expanding window forecast where the model is retrained
 at each step with one additional data point.
 
 # Arguments
-- `model::Union{LinearModel, SESModel}`: A model instance (will be refitted at each step)
+- `model::AbstractTimeSeriesModel`: A model instance (will be refitted at each step)
 - `ts::TimeSeries`: The historical time series data (must have at least 2 points)
 - `horizon::Int`: Number of steps to predict ahead beyond the historical data
 
@@ -52,7 +52,7 @@ function iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horiz
     
     # Phase 1: Predict within historical data (point min_size+1 to n)
     for i in (min_size+1):n
-        # Train on points 1 to i-1
+        # Train on points to i-1 
         knowledge_start = 1
         if hasproperty(model, :sliding_window)
             knowledge_start = max(1, i - model.sliding_window)
@@ -74,8 +74,14 @@ function iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horiz
     # Phase 2: Predict into the future (horizon steps beyond historical data)
     for h in 1:horizon
         # Train on all historical data (points 1 to n)
-        train_ts = TimeSeries(ts.timestamps, ts.values)
-        
+        knowledge_start = 1
+        if hasproperty(model, :sliding_window)
+            knowledge_start = max(1, n - model.sliding_window + 1)
+        end
+
+        train_x = ts.timestamps[knowledge_start:n]
+        train_y = ts.values[knowledge_start:n]
+        train_ts = TimeSeries(train_x, train_y)
         # Fit model
         fit(model, train_ts)
         

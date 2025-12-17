@@ -1,6 +1,6 @@
 # Model fitting functions
 
-using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, ARModel, LinearModel, SESModel
+using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, ARModel, ARIMAModel, LinearModel, SESModel
 using ..TimeSeriesKit: validate_timeseries
 using LinearAlgebra
 using Statistics
@@ -37,7 +37,7 @@ function fit(model::ARModel, ts::TimeSeries)
     fitted = X * β
     residuals = y .- fitted
     
-    model.state.fitted_values = y
+    model.state.fitted_values = ts.values
     model.state.residuals = residuals
     model.state.is_fitted = true
     
@@ -127,6 +127,47 @@ function fit(model::SESModel, ts::TimeSeries)
     model.state.parameters[:level] = level
     model.state.fitted_values = fitted
     model.state.residuals = residuals
+    model.state.is_fitted = true
+    
+    return model
+end
+
+# ARIMA Model implementation
+function fit(model::ARIMAModel, ts::TimeSeries)
+    validate_timeseries(ts)
+    
+    values = Float64.(ts.values)
+    n = length(values)
+    p, d, q = model.p, model.d, model.q
+    
+    if n < max(p, q) * 3 + d
+        throw(ArgumentError("Time series too short for ARIMA($p,$d,$q) model"))
+    end
+    
+    # Store original values for integration later
+    model.state.parameters[:original_values] = values
+    
+    # Apply differencing
+    if d > 0
+        diff_values = TimeSeriesKit.Models.ARIMA.difference_series(values, d)
+        model.state.parameters[:differenced_values] = diff_values
+    else
+        diff_values = values
+    end
+    
+    # Fit ARMA model to differenced data
+    intercept, ar_coeffs, ma_coeffs, fitted_diff, residuals_diff = 
+        TimeSeriesKit.Models.ARIMA.fit_arma(diff_values, p, q)
+    
+    # Store parameters
+    model.state.parameters[:intercept] = intercept
+    model.state.parameters[:ar_coefficients] = ar_coeffs
+    model.state.parameters[:ma_coefficients] = ma_coeffs
+    model.state.parameters[:d] = d
+    
+    # Store fitted values and residuals (on differenced scale)
+    model.state.fitted_values = fitted_diff
+    model.state.residuals = residuals_diff
     model.state.is_fitted = true
     
     return model
