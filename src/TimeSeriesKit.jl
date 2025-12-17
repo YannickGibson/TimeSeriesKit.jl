@@ -12,6 +12,7 @@ export RandomWalk, WhiteNoise, ARProcess, MAProcess, ARMAProcess
 # Export core utilities
 export validate_timeseries
 export differentiate, integrate
+export extrapolate_timestamps
 
 # Models submodule structure
 module Models
@@ -75,7 +76,7 @@ module Training
 end
 using .Training
 export fit, predict, forecast
-export extrapolate_timestamps, iterative_predict
+export iterative_predict
 
 # Evaluation module
 module Evaluation
