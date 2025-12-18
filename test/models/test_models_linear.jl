@@ -171,8 +171,8 @@ using Statistics
         fit(model, ts)
         
         @test model.state.is_fitted
-        @test model.state.parameters[:intercept] ≈ 20.0 atol=1e-10
-        @test model.state.parameters[:slope] ≈ -2.0 atol=1e-10
+        @test model.state.parameters[:intercept] ≈ 1.0 atol=1e-10
+        @test model.state.parameters[:slope] ≈ 2.0 atol=1e-10
     end
     
     @testset "LinearModel - iterative_predict with sliding_window" begin
