@@ -10,6 +10,7 @@
 - Rolling Ridge Regression
 - AR/MA, ARMA
 - Single Exponential Smoothing
+- Confidence of predictions for some models
 - Cross-validation techniques for time series and parameter space search
 - Dataset loading
 - Visualization tools
