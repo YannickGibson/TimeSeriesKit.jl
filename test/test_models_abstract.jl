@@ -142,7 +142,7 @@ using TimeSeriesKit
         # First fit
         ts1 = TimeSeries([1.0, 2.0, 3.0], [2.0, 4.0, 6.0])
         fit(model, ts1)
-        params1 = get_parameters(model)
+        params1 = deepcopy(get_parameters(model))
         
         # Second fit with different data
         ts2 = TimeSeries([1.0, 2.0, 3.0], [7.0, 5.0, 3.0])
