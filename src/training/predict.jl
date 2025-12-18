@@ -78,9 +78,6 @@ function predict(model::ARModel, x_values::Vector{<:Real})
     # and repeat it for all requested x_values
     fitted_values = model.state.fitted_values
     p = length(coefficients)
-    if length(fitted_values) < p
-        throw(ErrorException("Not enough fitted values for AR($p) prediction"))
-    end
     
     # Take the last p fitted values
     y_values = fitted_values[end-p+1:end]
@@ -123,13 +120,8 @@ function predict(model::ARIMAModel, x_values::Vector{<:Real})
         # Filter out NaN values
         valid_fitted = fitted_diff[.!isnan.(fitted_diff)]
         
-        if length(valid_fitted) < p
-            # Fall back to mean
-            forecast_diff = intercept
-        else
-            y_values = valid_fitted[end-p+1:end]
-            forecast_diff = intercept + sum(ar_coeffs .* y_values)
-        end
+        y_values = valid_fitted[end-p+1:end]
+        forecast_diff = intercept + sum(ar_coeffs .* y_values)
     else
         # MA model: predict mean
         forecast_diff = intercept

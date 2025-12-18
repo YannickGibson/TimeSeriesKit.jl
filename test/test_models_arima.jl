@@ -174,4 +174,63 @@ using TimeSeriesKit
         
         @test_throws ErrorException forecast(model, ts, 2)
     end
+    
+    @testset "ARIMAModel - predict before fit" begin
+        ts = TimeSeries([1.0, 2.0, 3.0])
+        model = ARIMAModel(p=1, d=0, q=0)
+        
+        @test_throws ErrorException predict(model, [4.0, 5.0])
+    end
+    
+    @testset "ARIMAModel - predict with p > 0" begin
+        ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0, 7.0, 986.0])
+        model = ARIMAModel(p=2, d=0, q=0)
+        fit(model, ts)
+        
+        pred = predict(model, [7.0, 8.0, 9.0])
+        
+        @test pred isa TimeSeries
+        @test length(pred) == 3
+        @test pred.timestamps == [7.0, 8.0, 9.0]
+        @test all(.!isnan.(pred.values))
+    end
+    
+    @testset "ARIMAModel - predict with p = 0 (MA only)" begin
+        ts = TimeSeries([1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0])
+        model = ARIMAModel(p=0, d=0, q=1)
+        fit(model, ts)
+        
+        pred = predict(model, [8.0, 9.0])
+        
+        @test pred isa TimeSeries
+        @test length(pred) == 2
+        # MA-only model should predict the intercept (mean)
+        @test all(pred.values .≈ model.state.parameters[:intercept])
+    end
+    
+    @testset "ARIMAModel - predict with d > 0" begin
+        ts = TimeSeries([1.0, 2.0, 4.0, 7.0, 11.0, 16.0])
+        model = ARIMAModel(p=1, d=1, q=0)
+        fit(model, ts)
+        
+        pred = predict(model, [7.0, 8.0])
+        
+        @test pred isa TimeSeries
+        @test length(pred) == 2
+        # Should integrate back to original scale
+        @test all(.!isnan.(pred.values))
+    end
+    
+    @testset "ARIMAModel - predict with d = 0" begin
+        ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0])
+        model = ARIMAModel(p=1, d=0, q=0)
+        fit(model, ts)
+        
+        pred = predict(model, [6.0, 7.0])
+        
+        @test pred isa TimeSeries
+        @test length(pred) == 2
+        # No integration needed
+        @test all(.!isnan.(pred.values))
+    end
 end
