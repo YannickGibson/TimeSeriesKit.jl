@@ -285,10 +285,12 @@ function forecast(model::ARIMAModel, ts::TimeSeries, horizon::Int)
         push!(history, forecast_val)
         
         # Future errors are assumed to be zero
-        if length(errors) >= q
-            popfirst!(errors)
+        if q > 0
+            if length(errors) >= q
+                popfirst!(errors)
+            end
+            push!(errors, 0.0)
         end
-        push!(errors, 0.0)
     end
     
     # Integrate forecasts back to original scale
