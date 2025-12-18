@@ -11,6 +11,7 @@ using Aqua
     include("core/test_core_utils.jl")
     include("core/test_core_processes.jl")
     include("test_evaluation_metrics.jl")
+    include("test_evaluation_model_selection.jl")
     include("models/test_models_abstract.jl")
     include("models/test_models_linear.jl")
     include("models/test_models_ar.jl")
