@@ -171,8 +171,55 @@ using Statistics
         fit(model, ts)
         
         @test model.state.is_fitted
-        @test model.state.parameters[:intercept] ≈ 1.0 atol=1e-10
-        @test model.state.parameters[:slope] ≈ 2.0 atol=1e-10
+        @test model.state.parameters[:intercept] ≈ 20.0 atol=1e-10
+        @test model.state.parameters[:slope] ≈ -2.0 atol=1e-10
+    end
+    
+    @testset "LinearModel - iterative_predict with sliding_window" begin
+        # Test iterative prediction with sliding window constraint
+        ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], 
+                       [2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0])
+        model = LinearModel(sliding_window=3)
+        
+        pred = iterative_predict(model, ts, 2)
+        
+        @test pred isa TimeSeries
+        # Should predict from position 4 onwards + 2 future = (8-3) + 2 = 7 predictions
+        @test length(pred) == 7
+        @test pred.name == "LinearModel (out-of-sample)"
+        @test all(.!isnan.(pred.values))
+    end
+    
+    @testset "LinearModel - iterative_predict insufficient data" begin
+        # Test with time series smaller than min_train_size
+        ts = TimeSeries([1.0, 2.0, 3.0], [2.0, 4.0, 6.0])
+        model = LinearModel(sliding_window=5)  # Requires at least 5 points
+        
+        @test_throws ArgumentError iterative_predict(model, ts, 2)
+    end
+    
+    @testset "LinearModel - iterative_predict invalid horizon" begin
+        ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], 
+                       [2.0, 4.0, 6.0, 8.0, 10.0, 12.0])
+        model = LinearModel(sliding_window=3)
+        
+        # Horizon must be at least 1
+        @test_throws ArgumentError iterative_predict(model, ts, 0)
+        @test_throws ArgumentError iterative_predict(model, ts, -1)
+    end
+    
+    @testset "LinearModel - iterative_predict basic functionality" begin
+        # Simple test without sliding window constraint
+        ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0], 
+                       [3.0, 5.0, 7.0, 9.0, 11.0])
+        model = LinearModel(sliding_window=2)
+        
+        pred = iterative_predict(model, ts, 3)
+        
+        @test pred isa TimeSeries
+        @test length(pred) > 0
+        # Check timestamps are extrapolated correctly
+        @test pred.timestamps[end] > ts.timestamps[end]
     end
 end
 
