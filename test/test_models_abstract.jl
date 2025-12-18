@@ -171,4 +171,15 @@ using TimeSeriesKit
         @test all(abs.(residuals1) .< 1e-10)
         @test !all(abs.(residuals2) .< 1e-10)
     end
+    
+    @testset "min_train_size - not implemented for base type" begin
+        # Create a minimal model that doesn't implement min_train_size
+        mutable struct DummyModel <: AbstractTimeSeriesModel
+            state::ModelState
+            DummyModel() = new(ModelState())
+        end
+        
+        dummy = DummyModel()
+        @test_throws ErrorException min_train_size(dummy)
+    end
 end
