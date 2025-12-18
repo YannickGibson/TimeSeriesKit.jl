@@ -86,9 +86,10 @@ module Evaluation
     using Statistics
     
     include("evaluation/metrics.jl")
+    include("evaluation/backtest.jl")
 end
 using .Evaluation
-export mse, mae, rmse
+export mse, mae, rmse, grid_search, cross_validate
 
 # Extensions
 function plot_timeseries end
