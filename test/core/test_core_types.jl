@@ -132,7 +132,7 @@ using Test
     end
     
     @testset "TimeSeries - CSV Loading" begin
-        csv_path = joinpath(@__DIR__, "..", "examples", "data", "emissions.csv")
+        csv_path = joinpath(@__DIR__, "..", "..", "examples", "data", "emissions.csv")
         
         # Test loading from CSV with country filter
         ts = TimeSeries(csv_path, "Czechia")
