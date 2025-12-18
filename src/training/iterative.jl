@@ -4,7 +4,7 @@ using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, PredictionResult, mi
 using ..Training: predict, fit
 
 """
-    iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horizon::Int; return_uncertainty::Bool=false)
+    iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horizon::Int; return_uncertainty::Bool=false, use_predictions::Bool=false)
 
 Iteratively train and predict for a given horizon using expanding window.
 
@@ -24,12 +24,13 @@ at each step with one additional data point.
 - `ts::TimeSeries`: The historical time series data (must have at least 2 points)
 - `horizon::Int`: Number of steps to predict ahead beyond the historical data
 - `return_uncertainty::Bool=false`: If true, returns PredictionResult with uncertainty estimates (LinearModel only)
+- `use_predictions::Bool=false`: If true, future predictions include previous predictions in training data
 
 # Returns
 - `TimeSeries`: A TimeSeries containing the iterative predictions with extrapolated timestamps
 - `PredictionResult`: If return_uncertainty=true, contains predictions with variance estimates
 """
-function iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horizon::Int; return_uncertainty::Bool=false)
+function iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horizon::Int; return_uncertainty::Bool=false, use_predictions::Bool=false)
     n = length(ts)
     
     min_size = min_train_size(model)
@@ -87,15 +88,39 @@ function iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horiz
     end
     
     # Phase 2: Predict into the future (horizon steps beyond historical data)
+    # Optionally include predictions in training data
+    # Note: use_predictions should only be used with AR-type models, not LinearModel
     for h in 1:horizon
-        # Train on all historical data (points 1 to n)
+        # Determine training data range - for future predictions, use the most recent window
         knowledge_start = 1
         if hasproperty(model, :sliding_window)
             knowledge_start = max(1, n - model.sliding_window + 1)
         end
 
-        train_x = ts.timestamps[knowledge_start:n]
-        train_y = ts.values[knowledge_start:n]
+        # Build training data based on use_predictions flag
+        # For LinearModel and RidgeModel, predictions lie exactly on the trend line
+        # so adding them creates a singular matrix. Only use for AR-type models.
+        if use_predictions && h > 1 && !(model isa LinearModel) && !(model isa RidgeModel)
+            # Include previous predictions in training data
+            # Number of predictions to include
+            num_past_preds = min(h - 1, n + h - 1 - knowledge_start)
+            
+            if knowledge_start <= n
+                # Include some historical data and some predictions
+                train_x = vcat(ts.timestamps[knowledge_start:n], all_pred_x[n - min_size + 1 : n - min_size + h - 1])
+                train_y = vcat(ts.values[knowledge_start:n], predictions[n - min_size + 1 : n - min_size + h - 1])
+            else
+                # Only use predictions (when sliding window is smaller than available predictions)
+                pred_start_idx = knowledge_start - n + (n - min_size)
+                train_x = all_pred_x[pred_start_idx : n - min_size + h - 1]
+                train_y = predictions[pred_start_idx : n - min_size + h - 1]
+            end
+        else
+            # Use only historical data (default behavior or for Linear/Ridge models)
+            train_x = ts.timestamps[knowledge_start:n]
+            train_y = ts.values[knowledge_start:n]
+        end
+        
         train_ts = TimeSeries(train_x, train_y)
         # Fit model
         fit(model, train_ts)

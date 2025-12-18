@@ -94,3 +94,12 @@ ts = ARProcess(500, phi=[0.9, -0.2], constant=1.0)
 plot_acf_pacf(ts)
 ```
 ![alt text](assets/stationary_ar_2_acf_pacf.png)
+
+## Bayesian Autoregressive Model
+```julia
+bar = BayesianARModel(p=1)
+predictions_bayesian = iterative_predict(bar, ts, 20, return_uncertainty=true, use_predictions=true)
+metric = rmse(ts, predictions_bayesian.predictions)
+plot_timeseries(ts, predictions_bayesian, confidence_level=0.95, title="Bayesian AR Model (RMSE: $(metric = round(rmse(ts, predictions_bayesian.predictions), digits=4)))")
+```
+![alt text](assets/iterative_bayesian_ar.png)

@@ -161,23 +161,34 @@ function predict(model::BayesianARModel, x_values::Vector{<:Real}; return_uncert
     predictions = fill(forecast, length(x_values))
     
     if return_uncertainty
-        # Create feature vector for prediction: [1, y_{t-1}, y_{t-2}, ..., y_{t-p}]
-        # y_values is [y_{n-p+1}, ..., y_{n}] in chronological order
-        # We need [1, y_n, y_{n-1}, ..., y_{n-p+1}] for the feature vector
-        x_pred = vcat([1.0], reverse(y_values))
+        # Multi-step ahead prediction with uncertainty propagation
+        # For each step, we use previous predictions as inputs, and uncertainty grows
         
-        # Prediction variance: Var(y_new) = σ² + x'Σ_post x
-        # This includes both parameter uncertainty and residual variance
-        param_uncertainty = dot(x_pred, Σ_post * x_pred)
+        pred_variances = zeros(length(x_values))
+        predictions_vec = zeros(length(x_values))
         
-        # Ensure non-negative variance (numerical stability)
-        param_uncertainty = max(0.0, param_uncertainty)
-        pred_variance = σ²_post + param_uncertainty
+        # Keep track of the lagged values (starting with actual observations)
+        current_lags = copy(y_values)
         
-        # Same variance for all predictions (since they use the same lagged values)
-        pred_variances = fill(pred_variance, length(x_values))
-        
-        ts = TimeSeries(x_values, predictions)
+        for i in 1:length(x_values)
+            # Create feature vector: [1, y_{t-1}, y_{t-2}, ..., y_{t-p}]
+            x_pred = vcat([1.0], reverse(current_lags))
+            
+            # Make prediction
+            y_pred = intercept + sum(coefficients .* reverse(current_lags))
+            predictions_vec[i] = y_pred + rand() * model.state.parameters[:residual_variance]
+            
+            # Calculate prediction variance for this step
+            # Var(y_new) = σ² + x'Σ_post x
+            param_uncertainty = dot(x_pred, Σ_post * x_pred)
+            param_uncertainty = max(0.0, param_uncertainty)
+            pred_variances[i] = σ²_post + param_uncertainty
+            
+            # Update lags: shift and add new prediction
+            # For next step, use the prediction we just made
+            current_lags = vcat(y_pred, current_lags[1:end-1])
+        end
+        ts = TimeSeries(x_values, predictions_vec)
         return PredictionResult(ts, pred_variances)
     else
         return TimeSeries(x_values, predictions)
