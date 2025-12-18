@@ -98,7 +98,7 @@ using Statistics
         
         @test pred_ts isa TimeSeries
         @test length(pred_ts) == 3
-        @test pred_ts.x == x_values
+        @test pred_ts.timestamps == x_values
         
         # All predictions should be equal (constant forecast)
         @test all(pred_ts.values .== pred_ts.values[1])
