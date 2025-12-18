@@ -11,7 +11,8 @@ using Statistics
         @test model isa SESModel
         @test model.alpha == 0.8
         @test !is_fitted(model)
-        
+        @test min_train_size(model) == 2
+
         # Custom alpha
         model = SESModel(alpha=0.5)
         @test model.alpha == 0.5
