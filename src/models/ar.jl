@@ -50,5 +50,46 @@ end
 # Minimum training size implementation
 TimeSeriesKit.Models.min_train_size(model::ARModel) = model.p + 1 # Needs at least one Y data point
 
-# Export the model type
-export ARModel
+"""
+    BayesianARModel
+
+Bayesian Autoregressive model of order p with uncertainty quantification.
+Uses Bayesian linear regression with conjugate Normal-Inverse-Gamma prior.
+
+The model estimates: y_t = c + φ₁y_{t-1} + φ₂y_{t-2} + ... + φₚy_{t-p} + ε_t
+
+With Bayesian estimation, we also get:
+- Posterior distribution of parameters
+- Parameter uncertainties (variance-covariance matrix)
+- Prediction uncertainties
+
+# Arguments
+- `p::Int`: Order of the AR model (must be at least 1)
+- `prior_precision::Float64`: Prior precision for parameters (default: 0.001, weak prior)
+
+# Prior specification
+Uses conjugate Normal-Inverse-Gamma prior:
+- β ~ N(0, (1/prior_precision)I)
+- σ² ~ Inverse-Gamma(a, b) with a=b=0.001 (weak prior)
+"""
+mutable struct BayesianARModel <: AbstractTimeSeriesModel
+    p::Int  # Order of the AR model
+    prior_precision::Float64  # Prior precision for parameters
+    state::ModelState
+    
+    function BayesianARModel(; p::Int, prior_precision::Float64=0.001)
+        if p < 1
+            throw(ArgumentError("AR order must be at least 1"))
+        end
+        if prior_precision <= 0
+            throw(ArgumentError("Prior precision must be positive"))
+        end
+        new(p, prior_precision, ModelState())
+    end
+end
+
+# Minimum training size implementation
+TimeSeriesKit.Models.min_train_size(model::BayesianARModel) = model.p + 1
+
+# Export the model types
+export ARModel, BayesianARModel

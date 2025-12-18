@@ -3,6 +3,7 @@ module PlotsExt
 using Plots
 using TimeSeriesKit
 using StatsBase
+using Distributions
 
 """
     plot_timeseries(ts::TimeSeries; kwargs...)
@@ -111,6 +112,69 @@ function TimeSeriesKit.plot_timeseries(ts::TimeSeriesKit.TimeSeries,
              markersize=6,
              color=:red,
              markershape=:cross)
+    
+    return p
+end
+
+"""
+    plot_timeseries(ts::TimeSeries, pred::PredictionResult; kwargs...)
+
+Plot historical data with predictions and confidence intervals.
+
+# Arguments
+- `ts::TimeSeries`: Historical time series data
+- `pred::PredictionResult`: Predictions with uncertainty estimates
+- `confidence_level::Float64=0.95`: Confidence level for intervals (default 95%)
+- `title::String`: Plot title
+- `show_history::Union{Int, Nothing}`: Number of historical points to show
+"""
+function TimeSeriesKit.plot_timeseries(ts::TimeSeriesKit.TimeSeries,
+                                       pred::TimeSeriesKit.PredictionResult; 
+                                       confidence_level::Float64=0.95,
+                                       title::String="Time Series with Predictions", 
+                                       show_history::Union{Int, Nothing}=nothing, 
+                                       kwargs...)
+    n_history = show_history === nothing ? length(ts) : min(show_history, length(ts))
+    
+    # Get historical data
+    hist_x = ts.timestamps[end-n_history+1:end]
+    hist_y = ts.values[end-n_history+1:end]
+    
+    # Plot historical data
+    p = plot(hist_x, hist_y;
+             label="Historical",
+             linewidth=2,
+             color=:blue,
+             title=title,
+             xlabel="X",
+             ylabel="Value",
+             legend=:best,
+             markershape=:circle,
+             kwargs...)
+    
+    # Add predictions
+    scatter!(p, pred.predictions.timestamps, pred.predictions.values;
+             label="Predictions",
+             markersize=6,
+             color=:red,
+             markershape=:cross)
+    
+    # Add confidence intervals if available
+    if pred.prediction_std !== nothing
+        # Calculate z-score for confidence level
+        z = quantile(Normal(), 0.5 + confidence_level / 2)
+        
+        lower = pred.predictions.values .- z .* pred.prediction_std
+        upper = pred.predictions.values .+ z .* pred.prediction_std
+        
+        # Add confidence interval band
+        plot!(p, pred.predictions.timestamps, lower;
+              fillrange=upper,
+              fillalpha=0.2,
+              fillcolor=:red,
+              linealpha=0,
+              label="$(Int(round(confidence_level*100)))% CI")
+    end
     
     return p
 end

@@ -1,10 +1,10 @@
 # Iterative prediction functions
 
-using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, min_train_size
+using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, PredictionResult, min_train_size, LinearModel, RidgeModel, BayesianARModel
 using ..Training: predict, fit
 
 """
-    iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horizon::Int)
+    iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horizon::Int; return_uncertainty::Bool=false)
 
 Iteratively train and predict for a given horizon using expanding window.
 
@@ -23,11 +23,13 @@ at each step with one additional data point.
 - `model::AbstractTimeSeriesModel`: A model instance (will be refitted at each step)
 - `ts::TimeSeries`: The historical time series data (must have at least 2 points)
 - `horizon::Int`: Number of steps to predict ahead beyond the historical data
+- `return_uncertainty::Bool=false`: If true, returns PredictionResult with uncertainty estimates (LinearModel only)
 
 # Returns
 - `TimeSeries`: A TimeSeries containing the iterative predictions with extrapolated timestamps
+- `PredictionResult`: If return_uncertainty=true, contains predictions with variance estimates
 """
-function iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horizon::Int)
+function iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horizon::Int; return_uncertainty::Bool=false)
     n = length(ts)
     
     min_size = min_train_size(model)
@@ -42,6 +44,7 @@ function iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horiz
     # Total predictions: from point (min_size+1) to end of ts, plus horizon into future
     total_predictions = (n - min_size) + horizon
     predictions = zeros(total_predictions)
+    pred_variances = return_uncertainty ? zeros(total_predictions) : nothing
     
     # Generate all x values we'll predict
     step = ts.timestamps[end] - ts.timestamps[end-1]
@@ -66,8 +69,20 @@ function iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horiz
         fit(model, train_ts)
         
         # Predict point i (using actual x value)
-        pred_ts = predict(model, [ts.timestamps[i]])
-        predictions[pred_idx] = pred_ts.values[1]
+        # Check if model supports uncertainty (LinearModel, RidgeModel, or BayesianARModel)
+        if return_uncertainty && (model isa LinearModel || model isa RidgeModel || model isa BayesianARModel)
+            pred_result = predict(model, [ts.timestamps[i]], return_uncertainty=true)
+        else
+            pred_result = predict(model, [ts.timestamps[i]])
+        end
+        
+        if return_uncertainty && pred_result isa PredictionResult
+            predictions[pred_idx] = pred_result.predictions.values[1]
+            pred_variances[pred_idx] = pred_result.prediction_variance[1]
+        else
+            pred_ts = pred_result isa PredictionResult ? pred_result.predictions : pred_result
+            predictions[pred_idx] = pred_ts.values[1]
+        end
         pred_idx += 1
     end
     
@@ -87,14 +102,34 @@ function iterative_predict(model::AbstractTimeSeriesModel, ts::TimeSeries, horiz
         
         # Predict future point
         next_x = future_x[h]
-        pred_ts = predict(model, [next_x])
-        predictions[pred_idx] = pred_ts.values[1]
+        
+        # Check if model supports uncertainty (LinearModel, RidgeModel, or BayesianARModel)
+        if return_uncertainty && (model isa LinearModel || model isa RidgeModel || model isa BayesianARModel)
+            pred_result = predict(model, [next_x], return_uncertainty=true)
+        else
+            pred_result = predict(model, [next_x])
+        end
+        
+        if return_uncertainty && pred_result isa PredictionResult
+            predictions[pred_idx] = pred_result.predictions.values[1]
+            pred_variances[pred_idx] = pred_result.prediction_variance[1]
+        else
+            pred_ts = pred_result isa PredictionResult ? pred_result.predictions : pred_result
+            predictions[pred_idx] = pred_ts.values[1]
+        end
         pred_idx += 1
     end
+    
     # dynamically get the class name
     cls_name = nameof(typeof(model))
     new_name = "$(cls_name) (out-of-sample)"
-    return TimeSeries(all_pred_x, predictions; name = new_name)
+    
+    if return_uncertainty && pred_variances !== nothing
+        result_ts = TimeSeries(all_pred_x, predictions; name = new_name)
+        return PredictionResult(result_ts, pred_variances)
+    else
+        return TimeSeries(all_pred_x, predictions; name = new_name)
+    end
 end
 
 export iterative_predict

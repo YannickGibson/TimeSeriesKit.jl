@@ -15,6 +15,7 @@ using Aqua
     include("models/test_models_abstract.jl")
     include("models/test_models_linear.jl")
     include("models/test_models_ar.jl")
+    include("models/test_models_bayesian_ar.jl")
     include("models/test_models_arima.jl")
     include("models/test_models_ses.jl")
 end

@@ -71,16 +71,17 @@ out_of_sample = iterative_predict(model_linear, ts, 4)
 plot_timeseries(ts, out_of_sample)
 ```
 ![alt text](assets/iterative_lr_window_2.png)
-### Sliding window 3
+### Sliding window 5 with CI
 ```julia
-# Create linear model
-model_linear = LinearModel(sliding_window=3)
+# Fit linear model
+ts = RandomWalk(50)
+model = LinearModel(sliding_window=5)
 
-# Predict series with forecast of 4
-out_of_sample = iterative_predict(model_linear, ts, 4)
-plot_timeseries(ts, out_of_sample)
+# Predict and plot
+predictions = iterative_predict(model, ts, 10, return_uncertainty=true)
+plot_timeseries(ts, predictions, confidence_level=0.95, title="Linear Model with Iterative Predictions & 95% CI")
 ```
-![alt text](assets/iterative_lr_window_3.png)
+![alt text](assets/iterative_lr_window_5_ci.png)
 ## Linear Stochastic Processes
 
 ```julia

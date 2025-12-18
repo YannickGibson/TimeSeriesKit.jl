@@ -1,6 +1,6 @@
 # Model prediction functions (predict at specific x values)
 
-using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, ARModel, ARIMAModel, LinearModel, RidgeModel, SESModel
+using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, ARModel, ARIMAModel, LinearModel, RidgeModel, SESModel, BayesianARModel, PredictionResult
 using Statistics
 
 """
@@ -11,13 +11,17 @@ Generate predictions at specific x values from a fitted model.
 function predict end
 
 """
-    predict(model::Union{LinearModel, RidgeModel}, x_values::Vector{<:Real})
+    predict(model::Union{LinearModel, RidgeModel}, x_values::Vector{<:Real}; return_uncertainty::Bool=false)
 
 Generate predictions at specific x values using a fitted linear or ridge regression model.
 
-Returns a TimeSeries with the predictions and x values as timestamps.
+Returns a TimeSeries with the predictions and x values as timestamps, or a PredictionResult
+if return_uncertainty=true (only supported for LinearModel).
+
+# Arguments
+- `return_uncertainty::Bool=false`: If true, returns PredictionResult with variance estimates (LinearModel only)
 """
-function predict(model::Union{LinearModel, RidgeModel}, x_values::Vector{<:Real})
+function predict(model::Union{LinearModel, RidgeModel}, x_values::Vector{<:Real}; return_uncertainty::Bool=false)
     if !model.state.is_fitted
         throw(ErrorException("Model must be fitted before prediction"))
     end
@@ -28,6 +32,29 @@ function predict(model::Union{LinearModel, RidgeModel}, x_values::Vector{<:Real}
     
     # Generate predictions: y = intercept + slope * x
     predictions = intercept .+ slope .* x_values
+    
+    # Calculate prediction variance if requested and available
+    if return_uncertainty && model isa LinearModel && haskey(model.state.parameters, :residual_variance)
+        σ² = model.state.parameters[:residual_variance]
+        
+        # Get variance-covariance matrix components
+        # For prediction variance: Var(ŷ₀) = σ²(x₀ᵀ(X'X)⁻¹x₀)
+        # where x₀ = [1, x_value]
+        intercept_var = model.state.parameters[:intercept_variance]
+        slope_var = model.state.parameters[:slope_variance]
+        covar = model.state.parameters[:covariance]
+        
+        # Calculate prediction variance for each x value
+        pred_variance = similar(x_values, Float64)
+        for (i, x) in enumerate(x_values)
+            # x₀ᵀ Var(β) x₀ = [1, x] * [[var_int, cov], [cov, var_slope]] * [1, x]'
+            # = var_int + 2*x*cov + x²*var_slope
+            pred_variance[i] = intercept_var + 2 * x * covar + x^2 * slope_var
+        end
+        
+        ts = TimeSeries(x_values, predictions)
+        return PredictionResult(ts, pred_variance)
+    end
     
     # Return as TimeSeries with x_values as timestamps
     return TimeSeries(x_values, predictions)
@@ -90,6 +117,71 @@ function predict(model::ARModel, x_values::Vector{<:Real})
     
     # Return as TimeSeries with x_values as timestamps
     return TimeSeries(x_values, predictions)
+end
+
+"""
+    predict(model::BayesianARModel, x_values::Vector{<:Real}; return_uncertainty::Bool=false)
+
+Generate predictions at specific x values using a fitted Bayesian AR model.
+
+# Arguments
+- `model::BayesianARModel`: Fitted Bayesian AR model
+- `x_values::Vector{<:Real}`: Timestamps at which to generate predictions
+- `return_uncertainty::Bool`: If true, returns PredictionResult with uncertainty estimates
+
+# Returns
+- If `return_uncertainty=false`: TimeSeries with predictions
+- If `return_uncertainty=true`: PredictionResult with predictions and uncertainty
+
+Note: For simple predict, this generates one-step forecasts based on the last observed values.
+For multi-step ahead forecasts with proper uncertainty propagation, use iterative_predict.
+"""
+function predict(model::BayesianARModel, x_values::Vector{<:Real}; return_uncertainty::Bool=false)
+    if !model.state.is_fitted
+        throw(ErrorException("Model must be fitted before prediction"))
+    end
+    
+    # Get model parameters
+    intercept = model.state.parameters[:intercept]
+    coefficients = model.state.parameters[:coefficients]
+    σ²_post = model.state.parameters[:residual_variance]
+    Σ_post = model.state.parameters[:posterior_covariance]
+    
+    # For simple predict, use the last p fitted values to make a one-step forecast
+    fitted_values = model.state.fitted_values
+    p = length(coefficients)
+    
+    # Take the last p fitted values
+    y_values = fitted_values[end-p+1:end]
+    
+    # Make one-step forecast: y_t = c + φ₁y_{t-1} + φ₂y_{t-2} + ... + φₚy_{t-p}
+    forecast = intercept + sum(coefficients .* y_values)
+    
+    # Repeat this forecast for all x_values
+    predictions = fill(forecast, length(x_values))
+    
+    if return_uncertainty
+        # Create feature vector for prediction: [1, y_{t-1}, y_{t-2}, ..., y_{t-p}]
+        # y_values is [y_{n-p+1}, ..., y_{n}] in chronological order
+        # We need [1, y_n, y_{n-1}, ..., y_{n-p+1}] for the feature vector
+        x_pred = vcat([1.0], reverse(y_values))
+        
+        # Prediction variance: Var(y_new) = σ² + x'Σ_post x
+        # This includes both parameter uncertainty and residual variance
+        param_uncertainty = dot(x_pred, Σ_post * x_pred)
+        
+        # Ensure non-negative variance (numerical stability)
+        param_uncertainty = max(0.0, param_uncertainty)
+        pred_variance = σ²_post + param_uncertainty
+        
+        # Same variance for all predictions (since they use the same lagged values)
+        pred_variances = fill(pred_variance, length(x_values))
+        
+        ts = TimeSeries(x_values, predictions)
+        return PredictionResult(ts, pred_variances)
+    else
+        return TimeSeries(x_values, predictions)
+    end
 end
 
 # ARIMA Model implementation

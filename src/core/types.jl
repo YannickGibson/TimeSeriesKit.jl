@@ -102,3 +102,24 @@ mutable struct ModelState
     
     ModelState() = new(Dict{Symbol, Any}(), nothing, nothing, false)
 end
+
+"""
+    PredictionResult
+
+Stores predictions along with uncertainty estimates.
+
+# Fields
+- `predictions::TimeSeries`: The predicted values
+- `prediction_variance::Union{Vector{<:Real}, Nothing}`: Variance of each prediction
+- `prediction_std::Union{Vector{<:Real}, Nothing}`: Standard deviation of each prediction
+"""
+struct PredictionResult
+    predictions::TimeSeries
+    prediction_variance::Union{Vector{<:Real}, Nothing}
+    prediction_std::Union{Vector{<:Real}, Nothing}
+    
+    function PredictionResult(predictions::TimeSeries, variance::Union{Vector{<:Real}, Nothing}=nothing)
+        std_dev = variance === nothing ? nothing : sqrt.(variance)
+        new(predictions, variance, std_dev)
+    end
+end

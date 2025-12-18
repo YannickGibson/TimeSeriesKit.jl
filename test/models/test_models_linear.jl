@@ -221,6 +221,143 @@ using Statistics
         # Check timestamps are extrapolated correctly
         @test pred.timestamps[end] > ts.timestamps[end]
     end
+    
+    @testset "LinearModel - fit stores variance parameters" begin
+        ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0], [2.1, 4.0, 6.2, 7.9, 10.1])
+        model = LinearModel()
+        fit(model, ts)
+        
+        # Check that variance parameters are stored
+        @test haskey(model.state.parameters, :residual_variance)
+        @test haskey(model.state.parameters, :intercept_variance)
+        @test haskey(model.state.parameters, :slope_variance)
+        @test haskey(model.state.parameters, :covariance)
+        
+        # Variances should be non-negative
+        @test model.state.parameters[:residual_variance] >= 0
+        @test model.state.parameters[:intercept_variance] >= 0
+        @test model.state.parameters[:slope_variance] >= 0
+    end
+    
+    @testset "LinearModel - predict with uncertainty" begin
+        ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0], [2.1, 4.0, 6.2, 7.9, 10.1])
+        model = LinearModel()
+        fit(model, ts)
+        
+        # Predict with uncertainty
+        result = predict(model, [6.0, 7.0, 8.0], return_uncertainty=true)
+        
+        @test result isa PredictionResult
+        @test result.predictions isa TimeSeries
+        @test result.prediction_variance !== nothing
+        @test result.prediction_std !== nothing
+        
+        @test length(result.predictions) == 3
+        @test length(result.prediction_variance) == 3
+        @test length(result.prediction_std) == 3
+        
+        # Standard deviation should be sqrt of variance
+        @test result.prediction_std ≈ sqrt.(result.prediction_variance)
+        
+        # All variances should be non-negative
+        @test all(result.prediction_variance .>= 0)
+        @test all(result.prediction_std .>= 0)
+    end
+    
+    @testset "LinearModel - predict without uncertainty (backward compatibility)" begin
+        ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0], [2.1, 4.0, 6.2, 7.9, 10.1])
+        model = LinearModel()
+        fit(model, ts)
+        
+        # Predict without uncertainty (default behavior)
+        result = predict(model, [6.0, 7.0, 8.0])
+        
+        @test result isa TimeSeries
+        @test !(result isa PredictionResult)
+        @test length(result) == 3
+    end
+    
+    @testset "LinearModel - prediction variance grows with distance" begin
+        # Use data with some noise to ensure non-zero variance
+        ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0], [2.1, 3.9, 6.1, 7.8, 10.2])
+        model = LinearModel()
+        fit(model, ts)
+        
+        # Predict at different distances from center
+        # Center of data is at x=3.0
+        result = predict(model, [3.0, 10.0], return_uncertainty=true)
+        
+        center_var = result.prediction_variance[1]  # x=3.0 (center)
+        far_var = result.prediction_variance[2]     # x=10.0 (far from center)
+        
+        # Variance should increase as we move away from center
+        @test far_var >= center_var
+        @test result.prediction_variance[1] >= 0
+        @test result.prediction_variance[2] > 0  # Far prediction should have positive variance
+    end
+    
+    @testset "LinearModel - iterative_predict with uncertainty" begin
+        ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0], [2.1, 4.0, 6.2, 7.9, 10.1])
+        model = LinearModel(sliding_window=2)
+        
+        result = iterative_predict(model, ts, 3, return_uncertainty=true)
+        
+        @test result isa PredictionResult
+        @test result.predictions isa TimeSeries
+        @test result.prediction_variance !== nothing
+        @test result.prediction_std !== nothing
+        
+        # Should have predictions for in-sample and out-of-sample
+        @test length(result.predictions) > 3  # At least the horizon
+        @test length(result.prediction_variance) == length(result.predictions)
+        @test length(result.prediction_std) == length(result.predictions)
+        
+        # All variances should be non-negative
+        @test all(result.prediction_variance .>= 0)
+    end
+    
+    @testset "LinearModel - iterative_predict without uncertainty" begin
+        ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0], [2.1, 4.0, 6.2, 7.9, 10.1])
+        model = LinearModel(sliding_window=2)
+        
+        result = iterative_predict(model, ts, 3)
+        
+        @test result isa TimeSeries
+        @test !(result isa PredictionResult)
+    end
+    
+    @testset "RidgeModel - predict with uncertainty not supported" begin
+        ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0], [2.1, 4.0, 6.2, 7.9, 10.1])
+        model = RidgeModel()
+        fit(model, ts)
+        
+        # RidgeModel doesn't have variance parameters, so should return TimeSeries
+        result = predict(model, [6.0, 7.0], return_uncertainty=true)
+        
+        @test result isa TimeSeries
+        @test !(result isa PredictionResult)
+    end
+    
+    @testset "PredictionResult - structure" begin
+        ts = TimeSeries([1.0, 2.0], [2.0, 4.0])
+        variance = [0.5, 1.0]
+        
+        result = PredictionResult(ts, variance)
+        
+        @test result.predictions === ts
+        @test result.prediction_variance == variance
+        @test result.prediction_std ≈ sqrt.(variance)
+    end
+    
+    @testset "PredictionResult - with nothing variance" begin
+        ts = TimeSeries([1.0, 2.0], [2.0, 4.0])
+        
+        result = PredictionResult(ts, nothing)
+        
+        @test result.predictions === ts
+        @test result.prediction_variance === nothing
+        @test result.prediction_std === nothing
+    end
 end
 
 @testset "Ridge Models" begin
