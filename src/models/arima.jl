@@ -308,6 +308,5 @@ end
 # Minimum training size implementation
 TimeSeriesKit.Models.min_train_size(model::ARIMAModel) = max(model.p, model.q) * 3 + model.d
 
-# Export the model type
-export forecast
+# Export the model type and forecast function
 export ARIMAModel, forecast

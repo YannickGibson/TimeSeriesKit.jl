@@ -34,9 +34,10 @@ module Models
     module ARIMA
         using ..TimeSeriesKit
         include("models/arima.jl")
+        export forecast
     end
     using .ARIMA
-    export ARIMAModel
+    export ARIMAModel, forecast
     
     # Linear models
     module Linear
@@ -59,7 +60,7 @@ end
 # Export model types at package level
 using .Models
 export ARModel, ARIMAModel, LinearModel, RidgeModel, SESModel
-export is_fitted, get_parameters, get_residuals, min_train_size
+export is_fitted, get_parameters, get_residuals, min_train_size, forecast
 
 # Training module
 module Training
