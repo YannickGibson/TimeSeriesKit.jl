@@ -109,4 +109,32 @@ using Statistics
         int_ts = integrate(diff_ts)
         @test int_ts.values ≈ ts.values[2:end] .- ts.values[1]
     end
+    
+    @testset "extrapolate_timestamps - basic" begin
+        ts = TimeSeries([10, 20, 30, 40], [1.0, 2.0, 3.0, 4.0])
+        
+        # Step size is 10, extrapolate 3 steps
+        future = extrapolate_timestamps(ts, 3)
+        
+        @test future isa Vector
+        @test length(future) == 3
+        @test future == [50, 60, 70]
+    end
+    
+    @testset "extrapolate_timestamps - different step sizes" begin
+        # Step size of 5
+        ts1 = TimeSeries([5, 10, 15, 20], [1.0, 2.0, 3.0, 4.0])
+        future1 = extrapolate_timestamps(ts1, 2)
+        @test future1 == [25, 30]
+        
+        # Step size of 1
+        ts2 = TimeSeries([1, 2, 3, 4], [1.0, 2.0, 3.0, 4.0])
+        future2 = extrapolate_timestamps(ts2, 5)
+        @test future2 == [5, 6, 7, 8, 9]
+        
+        # Step size of 100
+        ts3 = TimeSeries([100, 200, 300], [1.0, 2.0, 3.0])
+        future3 = extrapolate_timestamps(ts3, 3)
+        @test future3 == [400, 500, 600]
+    end
 end
