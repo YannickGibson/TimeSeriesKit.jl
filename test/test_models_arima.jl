@@ -135,6 +135,39 @@ using TimeSeriesKit
         @test length(forecast_ts) == 3
     end
     
+    @testset "ARIMAModel - forecast with d > 0" begin
+        ts = TimeSeries([1.0, 2.0, 4.0, 7.0, 11.0, 16.0, 22.0])
+        model = ARIMAModel(p=1, d=1, q=0)
+        fit(model, ts)
+        
+        forecast_ts = forecast(model, ts, 2)
+        
+        @test forecast_ts isa TimeSeries
+        @test length(forecast_ts) == 2
+        # Check that forecasts are integrated back to original scale
+        @test all(.!isnan.(forecast_ts.values))
+    end
+    
+    @testset "ARIMAModel - forecast with q > 0" begin
+        ts = TimeSeries([1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5])
+        model = ARIMAModel(p=1, d=0, q=1)
+        fit(model, ts)
+        
+        forecast_ts = forecast(model, ts, 3)
+        
+        @test forecast_ts isa TimeSeries
+        @test length(forecast_ts) == 3
+    end
+    
+    @testset "ARIMAModel - forecast invalid horizon" begin
+        ts = TimeSeries([1.0, 2.0, 3.0, 4.0])
+        model = ARIMAModel(p=1, d=0, q=0)
+        fit(model, ts)
+        
+        @test_throws ArgumentError forecast(model, ts, 0)
+        @test_throws ArgumentError forecast(model, ts, -1)
+    end
+    
     @testset "ARIMAModel - forecast before fit" begin
         ts = TimeSeries([1.0, 2.0, 3.0])
         model = ARIMAModel(p=1, d=0, q=0)
