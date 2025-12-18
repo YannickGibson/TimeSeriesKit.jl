@@ -86,7 +86,7 @@ module Evaluation
     using Statistics
     
     include("evaluation/metrics.jl")
-    include("evaluation/backtest.jl")
+    include("evaluation/model_selection.jl")
 end
 using .Evaluation
 export mse, mae, rmse, grid_search, cross_validate

@@ -1,4 +1,4 @@
-# Backtesting utilities for time series models
+# Model selection utilities for time series models (cross-validation and grid search)
 
 using ..TimeSeriesKit: AbstractTimeSeriesModel, TimeSeries, min_train_size
 using ..TimeSeriesKit: fit, iterative_predict
@@ -296,5 +296,5 @@ function grid_search(model_configs::Dict, ts::TimeSeries, n_splits::Int=5; verbo
     )
 end
 
-# Export backtest functions
+# Export model selection functions
 export cross_validate, grid_search
