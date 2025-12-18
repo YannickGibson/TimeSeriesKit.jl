@@ -47,15 +47,9 @@ end
 """
     fit(model::BayesianARModel, ts::TimeSeries)
 
-Fit a Bayesian AR model to time series data using Bayesian linear regression.
+Fit a Bayesian AR model to time series data using Bayesian linear regression. 
 
-Uses conjugate Normal-Inverse-Gamma prior:
-- Prior: β ~ N(0, (1/λ)I), where λ is prior_precision
-- Posterior: β|y,σ² ~ N(μ_post, Σ_post)
-- Posterior variance: σ²_post ~ Inverse-Gamma(a_post, b_post)
-
-The posterior mean is: μ_post = (X'X + λI)^(-1) X'y
-The posterior covariance is: Σ_post = σ²_post (X'X + λI)^(-1)
+The weights are given a Normal prior with mean `prior_mean` and variance `prior_variance`.
 """
 function fit(model::BayesianARModel, ts::TimeSeries)
     validate_timeseries(ts)
@@ -65,16 +59,19 @@ function fit(model::BayesianARModel, ts::TimeSeries)
     n = length(y)
     k = size(X, 2)  # Number of parameters (p + 1 for intercept)
     
-    # Prior precision matrix
-    λ = model.prior_precision
-    Λ = λ * I(k)
+    # Prior parameters
+    μ₀ = model.prior_mean
+    σ₀² = model.prior_variance
+    
+    # Prior precision matrix: Λ = (1/σ₀²)I
+    Λ = (1.0 / σ₀²) * I(k)
     
     # Posterior precision matrix: X'X + Λ
     XtX = X' * X
     precision_post = XtX + Λ
     
-    # Posterior mean: (X'X + Λ)^(-1) X'y
-    β_post = precision_post \ (X' * y)
+    # Posterior mean: (X'X + Λ)^(-1) (X'y + Λμ₀)
+    β_post = precision_post \ (X' * y + Λ * μ₀)
     
     # Compute fitted values and residuals
     fitted = X * β_post

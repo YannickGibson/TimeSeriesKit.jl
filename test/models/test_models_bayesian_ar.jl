@@ -9,20 +9,24 @@ using LinearAlgebra
         model = BayesianARModel(p=2)
         @test model isa BayesianARModel
         @test model.p == 2
-        @test model.prior_precision == 0.001
+        @test model.prior_variance == 1000.0
+        @test length(model.prior_mean) == 3  # p + 1 for intercept
+        @test all(model.prior_mean .== 0.0)  # Default: zero mean
         @test !model.state.is_fitted
         
-        # Custom prior precision
-        model2 = BayesianARModel(p=3, prior_precision=0.1)
+        # Custom prior
+        model2 = BayesianARModel(p=3, prior_mean=[0.0, 0.7, 0.2, 0.1], prior_variance=0.5)
         @test model2.p == 3
-        @test model2.prior_precision == 0.1
+        @test model2.prior_mean == [0.0, 0.7, 0.2, 0.1]
+        @test model2.prior_variance == 0.5
     end
     
     @testset "BayesianARModel - construction errors" begin
         @test_throws ArgumentError BayesianARModel(p=0)
         @test_throws ArgumentError BayesianARModel(p=-1)
-        @test_throws ArgumentError BayesianARModel(p=2, prior_precision=-0.1)
-        @test_throws ArgumentError BayesianARModel(p=2, prior_precision=0.0)
+        @test_throws ArgumentError BayesianARModel(p=2, prior_variance=-0.1)
+        @test_throws ArgumentError BayesianARModel(p=2, prior_variance=0.0)
+        @test_throws ArgumentError BayesianARModel(p=2, prior_mean=[0.0, 0.5])  # Wrong length
     end
     
     @testset "BayesianARModel - min_train_size" begin
@@ -43,7 +47,7 @@ using LinearAlgebra
         end
         ts = TimeSeries(collect(1.0:n), values)
         
-        model = BayesianARModel(p=1, prior_precision=0.001)
+        model = BayesianARModel(p=1, prior_variance=1000.0)
         fit(model, ts)
         
         @test model.state.is_fitted
@@ -108,7 +112,7 @@ using LinearAlgebra
     @testset "BayesianARModel - predict with uncertainty" begin
         # AR(1) data with some variation
         ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [2.0, 2.5, 2.9, 3.2, 3.6, 3.9])
-        model = BayesianARModel(p=1, prior_precision=0.01)
+        model = BayesianARModel(p=1, prior_variance=100.0)
         fit(model, ts)
         
         # Predict with uncertainty
@@ -134,20 +138,20 @@ using LinearAlgebra
         @test_throws ErrorException predict(model, [1.0, 2.0])
     end
     
-    @testset "BayesianARModel - prior_precision effect" begin
-        # Same data, different prior precisions
+    @testset "BayesianARModel - prior_variance effect" begin
+        # Same data, different prior variances
         ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [2.0, 2.5, 2.9, 3.2, 3.6, 3.9])
         
-        # Weak prior (more like OLS)
-        model_weak = BayesianARModel(p=1, prior_precision=0.0001)
+        # Weak prior (high variance - more like OLS)
+        model_weak = BayesianARModel(p=1, prior_variance=10000.0)
         fit(model_weak, ts)
         
-        # Strong prior (more regularization)
-        model_strong = BayesianARModel(p=1, prior_precision=10.0)
+        # Strong prior (low variance - more regularization)
+        model_strong = BayesianARModel(p=1, prior_variance=0.1)
         fit(model_strong, ts)
         
-        # Strong prior should give higher parameter variance (more uncertainty)
-        # and coefficients closer to zero (prior mean)
+        # Strong prior should pull coefficients closer to zero (prior mean)
+        # and give less influence to the data
         @test abs(model_strong.state.parameters[:coefficients][1]) <= 
               abs(model_weak.state.parameters[:coefficients][1])
     end
@@ -180,7 +184,7 @@ using LinearAlgebra
     @testset "BayesianARModel - iterative_predict with uncertainty" begin
         ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0], 
                        [2.0, 2.5, 2.9, 3.2, 3.6, 3.9, 4.1])
-        model = BayesianARModel(p=1, prior_precision=0.01)
+        model = BayesianARModel(p=1, prior_variance=100.0)
         
         result = iterative_predict(model, ts, 3, return_uncertainty=true)
         
@@ -223,8 +227,8 @@ using LinearAlgebra
         ts = TimeSeries([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], 
                        [2.0, 2.3, 2.6, 2.9, 3.2, 3.5, 3.8, 4.1])
         
-        # Bayesian with very weak prior
-        bayes_model = BayesianARModel(p=1, prior_precision=1e-6)
+        # Bayesian with very weak prior (high variance = weak belief)
+        bayes_model = BayesianARModel(p=1, prior_variance=1e6)
         fit(bayes_model, ts)
         
         # OLS AR
@@ -255,7 +259,7 @@ using LinearAlgebra
         end
         ts = TimeSeries(collect(1.0:n), values)
         
-        model = BayesianARModel(p=3, prior_precision=0.01)
+        model = BayesianARModel(p=3, prior_variance=100.0)
         fit(model, ts)
         
         @test model.state.is_fitted
@@ -278,5 +282,33 @@ using LinearAlgebra
         @test result.predictions isa TimeSeries
         @test result.prediction_variance isa Vector
         @test result.prediction_std ≈ sqrt.(result.prediction_variance)
+    end
+    
+    @testset "BayesianARModel - informative prior" begin
+        # Simulate AR(1): y_t = 0.5 + 0.7*y_{t-1} + ε_t with small sample
+        n = 15
+        values = zeros(n)
+        values[1] = 1.0
+        for i in 2:n
+            values[i] = 0.5 + 0.7 * values[i-1] + 0.1 * randn()
+        end
+        ts = TimeSeries(collect(1.0:n), values)
+        
+        # Model with informative prior: expect AR(1) ≈ 0.7, intercept ≈ 0.5
+        prior_mean = [0.5, 0.7]
+        prior_variance = 0.1  # Strong prior
+        model_informative = BayesianARModel(p=1, prior_mean=prior_mean, prior_variance=prior_variance)
+        fit(model_informative, ts)
+        
+        # Model with weak prior
+        model_weak = BayesianARModel(p=1, prior_variance=1000.0)
+        fit(model_weak, ts)
+        
+        # Informative prior should pull estimates toward prior mean
+        # In small samples, informative prior has more influence
+        @test abs(model_informative.state.parameters[:intercept] - 0.5) < 
+              abs(model_weak.state.parameters[:intercept] - 0.5)
+        @test abs(model_informative.state.parameters[:coefficients][1] - 0.7) < 
+              abs(model_weak.state.parameters[:coefficients][1] - 0.7)
     end
 end

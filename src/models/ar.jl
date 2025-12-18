@@ -65,26 +65,45 @@ With Bayesian estimation, we also get:
 
 # Arguments
 - `p::Int`: Order of the AR model (must be at least 1)
-- `prior_precision::Float64`: Prior precision for parameters (default: 0.001, weak prior)
+- `prior_mean::Vector{Float64}`: Prior mean for parameters [intercept, φ₁, ..., φₚ] (default: zeros)
+- `prior_variance::Float64`: Prior variance for parameters (default: 1000.0, weak prior)
 
 # Prior specification
 Uses conjugate Normal-Inverse-Gamma prior:
-- β ~ N(0, (1/prior_precision)I)
+- β ~ N(μ₀, σ₀²I) where μ₀ is prior_mean and σ₀² is prior_variance
 - σ² ~ Inverse-Gamma(a, b) with a=b=0.001 (weak prior)
+
+# Examples
+```julia
+# Non-informative prior (default)
+model = BayesianARModel(p=2)
+
+# Informative prior: expect AR(1)≈0.7, AR(2)≈0.2, intercept≈0
+model = BayesianARModel(p=2, prior_mean=[0.0, 0.7, 0.2], prior_variance=0.1)
+```
 """
 mutable struct BayesianARModel <: AbstractTimeSeriesModel
     p::Int  # Order of the AR model
-    prior_precision::Float64  # Prior precision for parameters
+    prior_mean::Vector{Float64}  # Prior mean for parameters
+    prior_variance::Float64  # Prior variance for parameters
     state::ModelState
     
-    function BayesianARModel(; p::Int, prior_precision::Float64=0.001)
+    function BayesianARModel(; p::Int, prior_mean::Union{Vector{Float64}, Nothing}=nothing, prior_variance::Float64=1000.0)
         if p < 1
             throw(ArgumentError("AR order must be at least 1"))
         end
-        if prior_precision <= 0
-            throw(ArgumentError("Prior precision must be positive"))
+        if prior_variance <= 0
+            throw(ArgumentError("Prior variance must be positive"))
         end
-        new(p, prior_precision, ModelState())
+        
+        # Default prior mean: zero vector
+        if prior_mean === nothing
+            prior_mean = zeros(p + 1)  # +1 for intercept
+        elseif length(prior_mean) != p + 1
+            throw(ArgumentError("Prior mean must have length p+1 (got $(length(prior_mean)), expected $(p+1))"))
+        end
+        
+        new(p, prior_mean, prior_variance, ModelState())
     end
 end
 
