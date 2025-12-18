@@ -1,2 +1,2 @@
 ignore:
-  - "ext/**/*"  # ignore ext folder and all its contents
+  - "ext"  # ignore ext folder and all its contents
